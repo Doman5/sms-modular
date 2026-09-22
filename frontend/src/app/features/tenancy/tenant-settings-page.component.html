@@ -1,0 +1,197 @@
+<section class="settings-page" aria-labelledby="tenant-settings-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Ustawienia</p>
+      <h1 id="tenant-settings-title">Ustawienia firmy</h1>
+      <p class="description">
+        Zarządzaj nazwą organizacji oraz ustawieniami lokalizacji używanymi w systemie.
+      </p>
+    </div>
+    <a class="back-link" routerLink="/" aria-label="Wróć do pulpitu">← Pulpit</a>
+  </header>
+
+  @if (tenantContext.status() === 'loading' && !tenantContext.tenant()) {
+    <app-loading-state label="Ładowanie danych firmy…" />
+  } @else if (tenantContext.status() === 'error' && !tenantContext.tenant()) {
+    @if (isForbidden(tenantContext.error())) {
+      <app-forbidden-state
+        title="Nie można wyświetlić danych firmy"
+        description="Twoja sesja nie ma dostępu do ustawień tego tenanta."
+      />
+    } @else {
+      <app-retryable-error-state
+        [message]="tenantContext.error()?.problem?.message ?? 'Nie udało się pobrać danych firmy.'"
+        (retry)="retryTenantLoad()"
+      />
+    }
+  } @else if (tenantContext.tenant(); as tenant) {
+    @if (tenantContext.status() === 'error') {
+      <div class="inline-problem" role="alert">
+        <strong>Odświeżenie danych firmy nie powiodło się.</strong>
+        <span>{{ tenantContext.error()?.problem?.message ?? 'Spróbuj ponownie.' }}</span>
+        <button type="button" class="text-button" (click)="retryTenantLoad()">
+          Spróbuj ponownie
+        </button>
+      </div>
+    }
+
+    <div class="tenant-summary" aria-label="Status tenanta">
+      <div>
+        <span class="summary-label">Organizacja</span>
+        <strong>{{ tenant.name }}</strong>
+        <span class="summary-slug">{{ tenant.slug }}</span>
+      </div>
+      <span class="status status-{{ tenant.status | lowercase }}">
+        <span aria-hidden="true">{{
+          tenant.status === 'ACTIVE' ? '●' : tenant.status === 'SUSPENDED' ? '!' : '×'
+        }}</span>
+        {{
+          tenant.status === 'ACTIVE'
+            ? 'Aktywny'
+            : tenant.status === 'SUSPENDED'
+              ? 'Zawieszony'
+              : 'Zamknięty'
+        }}
+      </span>
+    </div>
+
+    @if (!canEdit) {
+      <div class="readonly-note" role="status">
+        <span aria-hidden="true">ⓘ</span>
+        <span
+          >Masz dostęp tylko do odczytu. Do edycji potrzebujesz uprawnienia
+          TENANT_SETTINGS_EDIT.</span
+        >
+      </div>
+    }
+
+    <form class="settings-form" [formGroup]="settingsForm" (ngSubmit)="save()" novalidate>
+      <section class="settings-card" aria-labelledby="company-card-title">
+        <div class="card-heading">
+          <div>
+            <p class="eyebrow">Dane firmy</p>
+            <h2 id="company-card-title">Nazwa organizacji</h2>
+            <p>Ta nazwa będzie widoczna w całym systemie.</p>
+          </div>
+          <span class="card-icon" aria-hidden="true">▥</span>
+        </div>
+        <label for="tenant-name">Nazwa firmy <span aria-hidden="true">*</span></label>
+        <input
+          id="tenant-name"
+          type="text"
+          formControlName="name"
+          maxlength="255"
+          autocomplete="organization"
+          [readonly]="!canEdit"
+          [attr.aria-invalid]="
+            settingsForm.controls.name.invalid && settingsForm.controls.name.touched
+          "
+          [attr.aria-describedby]="fieldError('name') ? 'tenant-name-error' : null"
+        />
+        <div class="field-meta">
+          <span>Do 255 znaków</span><span>{{ settingsForm.controls.name.value.length }}/255</span>
+        </div>
+        @if (fieldError('name'); as error) {
+          <p id="tenant-name-error" class="field-error" role="alert">{{ error }}</p>
+        }
+      </section>
+
+      <section class="settings-card" aria-labelledby="localization-card-title">
+        <div class="card-heading">
+          <div>
+            <p class="eyebrow">Lokalizacja</p>
+            <h2 id="localization-card-title">Strefa czasowa i język</h2>
+            <p>Ustawienia lokalizacji wpływają na wyświetlanie dat i godzin w systemie.</p>
+          </div>
+          <span class="card-icon" aria-hidden="true">◎</span>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label for="tenant-timezone">Strefa czasowa <span aria-hidden="true">*</span></label>
+            <input
+              id="tenant-timezone"
+              type="text"
+              formControlName="timezone"
+              list="timezone-options"
+              autocomplete="off"
+              [readonly]="!canEdit"
+              [attr.aria-invalid]="
+                settingsForm.controls.timezone.invalid && settingsForm.controls.timezone.touched
+              "
+              [attr.aria-describedby]="fieldError('timezone') ? 'tenant-timezone-error' : null"
+            />
+            @if (fieldError('timezone'); as error) {
+              <p id="tenant-timezone-error" class="field-error" role="alert">{{ error }}</p>
+            }
+          </div>
+          <div class="field">
+            <label for="tenant-locale">Język / locale <span aria-hidden="true">*</span></label>
+            <input
+              id="tenant-locale"
+              type="text"
+              formControlName="locale"
+              list="locale-options"
+              autocomplete="language"
+              [readonly]="!canEdit"
+              [attr.aria-invalid]="
+                settingsForm.controls.locale.invalid && settingsForm.controls.locale.touched
+              "
+              [attr.aria-describedby]="fieldError('locale') ? 'tenant-locale-error' : null"
+            />
+            @if (fieldError('locale'); as error) {
+              <p id="tenant-locale-error" class="field-error" role="alert">{{ error }}</p>
+            }
+          </div>
+        </div>
+        <datalist id="timezone-options">
+          <option value="Europe/Warsaw">Europa — Warszawa</option>
+          <option value="Europe/Berlin">Europa — Berlin</option>
+          <option value="Europe/London">Europa — Londyn</option>
+          <option value="America/New_York">Ameryka — Nowy Jork</option>
+          <option value="America/Los_Angeles">Ameryka — Los Angeles</option>
+          <option value="UTC">UTC</option>
+        </datalist>
+        <datalist id="locale-options">
+          <option value="pl-PL">Polski</option>
+          <option value="en-US">English</option>
+          <option value="de-DE">Deutsch</option>
+        </datalist>
+      </section>
+
+      @if (serverFieldErrors().length > 0) {
+        <app-validation-summary [errors]="serverFieldErrors()" />
+      }
+
+      @if (saveProblem(); as problem) {
+        @if (isForbidden(problem)) {
+          <div class="inline-problem danger" role="alert">
+            <strong>Brak uprawnień do zapisu.</strong>
+            <span>Backend odrzucił tę operację. Twoje dane nie zostały zmienione.</span>
+          </div>
+        } @else if (isRetryable(problem)) {
+          <div class="inline-problem danger" role="alert">
+            <strong>Nie udało się zapisać zmian.</strong>
+            <span>{{ problem.problem.message }}</span>
+            <button type="button" class="text-button" [disabled]="saveBusy()" (click)="retrySave()">
+              Spróbuj ponownie
+            </button>
+          </div>
+        } @else if (serverFieldErrors().length === 0) {
+          <div class="inline-problem danger" role="alert">{{ problem.problem.message }}</div>
+        }
+      }
+
+      @if (saveMessage() && !saveProblem()) {
+        <p class="save-message" [class.success]="saved()" role="status">{{ saveMessage() }}</p>
+      }
+
+      @if (canEdit) {
+        <div class="form-actions">
+          <button type="submit" class="primary-button" [disabled]="saveBusy()">
+            {{ saveBusy() ? 'Zapisywanie…' : 'Zapisz zmiany' }}
+          </button>
+        </div>
+      }
+    </form>
+  }
+</section>

@@ -1,0 +1,122 @@
+databaseChangeLog:
+  - changeSet:
+      id: integration-runtime-001-outbox-inbox
+      author: sms-modular
+      comment: Durable tenant-scoped outbox and inbox with lease-safe status transitions.
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE outbox_messages (
+                id uuid NOT NULL,
+                tenant_id uuid NOT NULL,
+                topic varchar(128) NOT NULL,
+                aggregate_type varchar(128) NOT NULL,
+                aggregate_id uuid NOT NULL,
+                payload_version integer NOT NULL,
+                payload jsonb NOT NULL,
+                status varchar(24) NOT NULL,
+                attempt integer NOT NULL DEFAULT 0,
+                available_at timestamp with time zone NOT NULL,
+                lease_owner varchar(128) NULL,
+                lease_until timestamp with time zone NULL,
+                correlation_id varchar(64) NOT NULL,
+                idempotency_key varchar(255) NOT NULL,
+                created_at timestamp with time zone NOT NULL,
+                updated_at timestamp with time zone NOT NULL,
+                last_error_code varchar(64) NULL,
+                CONSTRAINT pk_outbox_messages PRIMARY KEY (id),
+                CONSTRAINT fk_outbox_messages_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+                CONSTRAINT ck_outbox_messages_topic CHECK (topic ~ '^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$'),
+                CONSTRAINT ck_outbox_messages_aggregate_type CHECK (aggregate_type ~ '^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$'),
+                CONSTRAINT ck_outbox_messages_payload_version CHECK (payload_version > 0),
+                CONSTRAINT ck_outbox_messages_status CHECK (status IN ('PENDING', 'PROCESSING', 'RETRY_WAIT', 'COMPLETED', 'DEAD_LETTER')),
+                CONSTRAINT ck_outbox_messages_attempt CHECK (attempt >= 0),
+                CONSTRAINT ck_outbox_messages_correlation CHECK (correlation_id ~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'),
+                CONSTRAINT ck_outbox_messages_timestamps CHECK (updated_at >= created_at),
+                CONSTRAINT ck_outbox_messages_lease CHECK (
+                  (status = 'PROCESSING' AND lease_owner IS NOT NULL AND lease_until IS NOT NULL)
+                  OR (status <> 'PROCESSING')
+                ),
+                CONSTRAINT uq_outbox_messages_tenant_idempotency UNIQUE (tenant_id, idempotency_key)
+              )
+        - sql:
+            sql: |
+              CREATE INDEX idx_outbox_messages_ready
+                ON outbox_messages (tenant_id, status, available_at, id)
+        - sql:
+            sql: |
+              CREATE INDEX idx_outbox_messages_lease
+                ON outbox_messages (tenant_id, status, lease_until)
+        - sql:
+            sql: |
+              CREATE INDEX idx_outbox_messages_dead_letter
+                ON outbox_messages (tenant_id, updated_at DESC, id DESC)
+                WHERE status = 'DEAD_LETTER'
+        - sql:
+            sql: |
+              CREATE TABLE inbox_receipts (
+                id uuid NOT NULL,
+                tenant_id uuid NOT NULL,
+                consumer varchar(128) NOT NULL,
+                event_id uuid NOT NULL,
+                received_at timestamp with time zone NOT NULL,
+                correlation_id varchar(64) NOT NULL,
+                CONSTRAINT pk_inbox_receipts PRIMARY KEY (id),
+                CONSTRAINT fk_inbox_receipts_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+                CONSTRAINT ck_inbox_receipts_consumer CHECK (consumer ~ '^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$'),
+                CONSTRAINT ck_inbox_receipts_correlation CHECK (correlation_id ~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'),
+                CONSTRAINT uq_inbox_receipts_delivery UNIQUE (tenant_id, consumer, event_id)
+              )
+        - sql:
+            sql: |
+              CREATE INDEX idx_inbox_receipts_tenant_received
+                ON inbox_receipts (tenant_id, received_at DESC)
+        - sql:
+            splitStatements: false
+            stripComments: false
+            sql: |
+              ALTER TABLE outbox_messages ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE outbox_messages FORCE ROW LEVEL SECURITY;
+              CREATE POLICY outbox_message_isolation ON outbox_messages
+                FOR SELECT
+                USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+              CREATE POLICY outbox_message_insert_isolation ON outbox_messages
+                FOR INSERT
+                WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+              CREATE POLICY outbox_message_update_isolation ON outbox_messages
+                FOR UPDATE
+                USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+                WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+              ALTER TABLE inbox_receipts ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE inbox_receipts FORCE ROW LEVEL SECURITY;
+              CREATE POLICY inbox_receipt_isolation ON inbox_receipts
+                FOR SELECT
+                USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+              CREATE POLICY inbox_receipt_insert_isolation ON inbox_receipts
+                FOR INSERT
+                WITH CHECK (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+              REVOKE UPDATE, DELETE ON inbox_receipts FROM PUBLIC;
+              REVOKE DELETE ON outbox_messages FROM PUBLIC;
+      rollback:
+        - sql:
+            sql: DROP POLICY IF EXISTS inbox_receipt_insert_isolation ON inbox_receipts
+        - sql:
+            sql: DROP POLICY IF EXISTS outbox_message_update_isolation ON outbox_messages
+        - sql:
+            sql: DROP POLICY IF EXISTS outbox_message_insert_isolation ON outbox_messages
+        - sql:
+            sql: DROP POLICY IF EXISTS inbox_receipt_isolation ON inbox_receipts
+        - sql:
+            sql: DROP POLICY IF EXISTS outbox_message_isolation ON outbox_messages
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_inbox_receipts_tenant_received
+        - sql:
+            sql: DROP TABLE IF EXISTS inbox_receipts
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_outbox_messages_dead_letter
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_outbox_messages_lease
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_outbox_messages_ready
+        - sql:
+            sql: DROP TABLE IF EXISTS outbox_messages

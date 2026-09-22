@@ -1,0 +1,13 @@
+.git
+.idea
+.vscode
+.DS_Store
+node_modules
+.angular
+dist
+coverage
+*.p12
+*.jks
+.env
+.env.*
+!.env.example

@@ -1,0 +1,15 @@
+.git
+.idea
+.vscode
+.DS_Store
+target
+frontend/node_modules
+frontend/.angular
+frontend/dist
+frontend/coverage
+*.p12
+*.jks
+.local
+.env
+.env.*
+!.env.example

@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sms_modular
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - sms_modular_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sms_modular"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_ENVIRONMENT: docker
+      SERVER_PORT: 8080
+      ALLOWED_ORIGINS: http://localhost:4200
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sms_modular
+      SPRING_DATASOURCE_USERNAME: sms_modular_runtime
+      SPRING_DATASOURCE_PASSWORD: sms_modular_runtime_local
+      SPRING_LIQUIBASE_USER: sms_modular_owner
+      SPRING_LIQUIBASE_PASSWORD: sms_modular_owner_local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      BACKEND_URL: http://backend:8080
+      PORT: 8080
+    depends_on:
+      - backend
+    ports:
+      - "4200:8080"
+
+volumes:
+  sms_modular_postgres_data:

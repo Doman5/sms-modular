@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: sms-modular
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  jackson:
+    time-zone: UTC
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sms_modular}
+    username: ${SPRING_DATASOURCE_USERNAME:sms_modular_runtime}
+    password: ${SPRING_DATASOURCE_PASSWORD:sms_modular_runtime_local}
+    hikari:
+      connection-init-sql: SET TIME ZONE 'UTC'
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    user: ${SPRING_LIQUIBASE_USER:sms_modular_owner}
+    password: ${SPRING_LIQUIBASE_PASSWORD:sms_modular_owner_local}
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+app:
+  environment: ${APP_ENVIRONMENT:local}
+  integration-runtime:
+    enabled: ${INTEGRATION_RUNTIME_ENABLED:false}
+    batch-size: ${INTEGRATION_RUNTIME_BATCH_SIZE:25}
+    lease-duration: ${INTEGRATION_RUNTIME_LEASE_DURATION:60s}
+    poll-interval: ${INTEGRATION_RUNTIME_POLL_INTERVAL:5s}
+    max-attempts: ${INTEGRATION_RUNTIME_MAX_ATTEMPTS:8}
+    initial-backoff: ${INTEGRATION_RUNTIME_INITIAL_BACKOFF:2s}
+    max-backoff: ${INTEGRATION_RUNTIME_MAX_BACKOFF:15m}
+    jitter-ratio: ${INTEGRATION_RUNTIME_JITTER_RATIO:0.2}
+    handler-timeout: ${INTEGRATION_RUNTIME_HANDLER_TIMEOUT:30s}
+    worker-threads: ${INTEGRATION_RUNTIME_WORKER_THREADS:4}
+    sms:
+      enabled: ${INTEGRATION_RUNTIME_SMS_ENABLED:false}
+      provider: ${INTEGRATION_RUNTIME_SMS_PROVIDER:disabled}
+      webhook-enabled: ${INTEGRATION_RUNTIME_SMS_WEBHOOK_ENABLED:false}
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+  security:
+    jwt-issuer-uri: ${JWT_ISSUER_URI:}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

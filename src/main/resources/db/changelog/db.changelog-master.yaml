@@ -1,0 +1,40 @@
+databaseChangeLog:
+  # Foundation is the only changelog with changes at this stage. The explicit
+  # module includes make dependency order visible and give each owner a stable
+  # place for its future migrations without creating domain tables now.
+  - include:
+      file: db/changelog/foundation/db.changelog-foundation.yaml
+  - include:
+      file: db/changelog/tenancy/db.changelog-tenancy.yaml
+  - include:
+      file: db/changelog/audit/db.changelog-audit.yaml
+  - include:
+      file: db/changelog/integration-runtime/db.changelog-integration-runtime.yaml
+  - include:
+      file: db/changelog/identity-access/db.changelog-identity-access.yaml
+  - include:
+      file: db/changelog/entitlements/db.changelog-entitlements.yaml
+  - include:
+      file: db/changelog/usage/db.changelog-usage.yaml
+  - include:
+      file: db/changelog/employee-directory/db.changelog-employee-directory.yaml
+  - include:
+      file: db/changelog/time-tracking/db.changelog-time-tracking.yaml
+  - include:
+      file: db/changelog/absence-events/db.changelog-absence-events.yaml
+  - include:
+      file: db/changelog/sms-inbound/db.changelog-sms-inbound.yaml
+  - include:
+      file: db/changelog/ai-interpretation/db.changelog-ai-interpretation.yaml
+  - include:
+      file: db/changelog/leave-management/db.changelog-leave-management.yaml
+  - include:
+      file: db/changelog/projects/db.changelog-projects.yaml
+  - include:
+      file: db/changelog/tool-assignment/db.changelog-tool-assignment.yaml
+  - include:
+      file: db/changelog/planning/db.changelog-planning.yaml
+  - include:
+      file: db/changelog/payroll/db.changelog-payroll.yaml
+  - include:
+      file: db/changelog/reporting/db.changelog-reporting.yaml
