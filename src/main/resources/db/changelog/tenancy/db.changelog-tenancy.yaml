@@ -1,38 +1,63 @@
 databaseChangeLog:
   - changeSet:
-      id: tenancy-001-tenants
+      id: tenancy-001-create-tenants
       author: sms-modular
-      comment: Platform-owned tenant lifecycle table. It is intentionally not RLS protected.
       changes:
-        - sql:
-            sql: |
-              CREATE TABLE tenants (
-                id uuid NOT NULL,
-                slug varchar(64) NOT NULL,
-                name varchar(255) NOT NULL,
-                status varchar(16) NOT NULL,
-                timezone varchar(64) NOT NULL,
-                locale varchar(32) NOT NULL,
-                created_at timestamp with time zone NOT NULL,
-                updated_at timestamp with time zone NOT NULL,
-                closed_at timestamp with time zone NULL,
-                CONSTRAINT pk_tenants PRIMARY KEY (id),
-                CONSTRAINT uq_tenants_slug UNIQUE (slug),
-                CONSTRAINT ck_tenants_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'CLOSED')),
-                CONSTRAINT ck_tenants_name_not_blank CHECK (length(btrim(name)) > 0),
-                CONSTRAINT ck_tenants_timezone_not_blank CHECK (length(btrim(timezone)) > 0),
-                CONSTRAINT ck_tenants_locale_not_blank CHECK (length(btrim(locale)) > 0),
-                CONSTRAINT ck_tenants_timestamps CHECK (updated_at >= created_at),
-                CONSTRAINT ck_tenants_closed_at CHECK (
-                  (status = 'CLOSED' AND closed_at IS NOT NULL)
-                  OR (status <> 'CLOSED' AND closed_at IS NULL)
-                )
-              )
-        - sql:
-            sql: |
-              CREATE INDEX idx_tenants_status ON tenants (status)
-      rollback:
-        - sql:
-            sql: DROP INDEX IF EXISTS idx_tenants_status
-        - sql:
-            sql: DROP TABLE IF EXISTS tenants
+        - createTable:
+            tableName: tenants
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_tenants
+                    nullable: false
+              - column:
+                  name: slug
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(160)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: time_zone
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: locale
+                  type: varchar(35)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: closed_at
+                  type: timestamp with time zone
+        - addUniqueConstraint:
+            tableName: tenants
+            columnNames: slug
+            constraintName: uq_tenants_slug
+        - createIndex:
+            tableName: tenants
+            indexName: ix_tenants_status
+            columns:
+              - column:
+                  name: status

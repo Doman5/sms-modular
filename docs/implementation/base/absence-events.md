@@ -23,7 +23,7 @@ mechanizmem urlopowym; zdarzenie może mieć status operacyjnego review.
 
 ## Kontrakty, API i zdarzenia
 
-- `RegisterAbsenceEventCommand` i `AbsenceConflictPort`.
+- `AbsenceEventService.register(...)` oraz metody DTO do sprawdzenia konfliktu.
 - `/api/v1/absences`: list/filter/create; `/api/v1/absences/{id}` update/delete;
   brak endpointu urlopowej akceptacji w module bazowym.
 - Permissions `ABSENCE_READ`, `ABSENCE_EDIT`; capability `ABSENCE_EVENTS`.
@@ -33,18 +33,19 @@ mechanizmem urlopowym; zdarzenie może mieć status operacyjnego review.
 
 ## Dane i frontend
 
-- `absence_events` z RLS, indeksem tenant/employee/date range i unique source.
+- `absence_events` z indeksem tenant/employee/date range i unikalnym kluczem
+  źródła. Zapytania zawsze filtrują po jawnie przekazanym `tenantId`.
 - Nie tworzyć FK do wiadomości ani wniosku urlopowego.
 - Angular: lista/kalendarz nieobecności, filtrowanie, ręczny zapis i konflikt.
   Elementy puli/akceptacji pojawiają się dopiero z capability Leave.
 
 ## Etapy
 
-1. Model, kategorie bazowe, constraints, RLS.
-2. Komenda rejestracji, overlap i integracja z Employee.
-3. Konflikt z Time Tracking przez port, audyt i zamknięty okres.
+1. Encja, kategorie bazowe, constraints, repozytorium i Liquibase.
+2. Rejestracja, overlap i sprawdzenie pracownika przez `EmployeeService`.
+3. Konflikt z Time Tracking przez metodę `TimeTrackingService`, audyt i zamknięty okres.
 4. API query/commands i Angular.
-5. Kontrakty dla SMS i Leave, zdarzenia do Reporting.
+5. Użycie `AbsenceEventService` z SMS Inbound i Leave oraz raportowanie.
 
 ## Migracja i testy
 
@@ -55,7 +56,6 @@ konflikt czasu, closed period, cross-tenant i zachowanie po wyłączeniu Leave.
 
 ## Zależności i ukończenie
 
-Wymaga Employee Directory i Audit; integruje Time przez port. Odblokowuje SMS,
+Wymaga Employee Directory i Audit; integruje Time przez publiczne metody serwisu. Odblokowuje SMS,
 Leave, Payroll i Reporting. Gotowe, gdy zapis faktu nieobecności nie wymaga
 aktywnego dodatku Urlopy.
-

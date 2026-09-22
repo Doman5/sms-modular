@@ -1,6 +1,9 @@
 # Frontend
 
-Minimalna aplikacja Angular dla projektu SMS Modular. Zawiera konfigurację Angular CLI, standalone components, routing, HTTP, SCSS oraz PrimeNG/Aura. Nie zawiera jeszcze modułów biznesowych ani autoryzacji.
+Frontend Angular obsługuje logowanie do panelu firmy i platformy, wymuszoną
+zmianę hasła, użytkowników, role, ustawienia firmy oraz provisioning tenantów.
+Token jest przechowywany w `sessionStorage`, a widoki są ładowane leniwie.
+Układ jest responsywny; osobny etap dopracuje widok mobilny.
 
 ```bash
 npm ci

@@ -8,7 +8,8 @@ raporty oraz zamykać okresy. Źródła: cały
 `0021`, pola stawek `Employee` oraz Angular reports/settings.
 
 Payroll nie jest właścicielem pracownika, czasu ani nieobecności. Dane wejściowe
-pobiera jako wersjonowany snapshot przez porty.
+pobiera jako DTO z metod `EmployeeService`, `TimeTrackingService` i opcjonalnie
+`LeaveManagementService`.
 
 ## Model i reguły
 
@@ -18,7 +19,8 @@ pobiera jako wersjonowany snapshot przez porty.
 - `PayrollReport` ma okres, settings version, status i aggregate totals;
   `PayrollReportRow` jest niezmiennym snapshotem wejść i wyników pracownika.
 - `PayrollPeriodClosure` blokuje korekty danych wpływających na miesiąc poprzez
-  publiczny `PeriodClosurePort`, bez dostępu Time/Absence do tabel Payroll.
+  `PayrollService.isPeriodClosed(tenantId, period)`, bez dostępu Time/Absence do
+  tabel Payroll.
 - Ponowne otwarcie wymaga `PAYROLL_REOPEN`, powodu i audytu.
 - Algorytm jest deterministyczny, operuje na `BigDecimal` i ma jawne zasady
   zaokrąglenia oraz kolejność mnożników.
@@ -29,14 +31,16 @@ pobiera jako wersjonowany snapshot przez porty.
   i reopen; eksport CSV/XLSX/PDF przy konkretnym report ID.
 - Permissions `PAYROLL_READ`, `PAYROLL_CONFIGURE`, `PAYROLL_GENERATE`,
   `PAYROLL_CLOSE`, `PAYROLL_REOPEN`; capability `PAYROLL`.
-- Kontrakty: konsumowane `EmployeePayrollSnapshot`, `WorkTimeSnapshot` i
-  opcjonalny `LeavePayrollSnapshot`; udostępniany `PeriodClosurePort`.
+- Metody pobierają `EmployeePayrollSnapshot`, `WorkTimeSnapshot` i opcjonalny
+  `LeavePayrollSnapshot`; `PayrollService` udostępnia sprawdzenie zamknięcia
+  okresu.
 - Zdarzenia `PayrollReportGenerated`, `PayrollPeriodClosed/Reopened`.
 
 ## Dane, frontend i dezaktywacja
 
 - Tabele settings/version, compensation, reports, rows, closures; wszystkie z
-  tenantem i RLS. Unique closure per tenant/period.
+  `tenant_id`. Unique closure per tenant/period. Każde zapytanie przyjmuje jawne
+  `tenantId`.
 - Angular reports/settings: preview, generate, history, snapshot details,
   export, close/reopen i komunikat brakującego dodatku.
 - Wyłączenie blokuje generowanie i zmiany, ale raporty i closures pozostają do
@@ -45,10 +49,10 @@ pobiera jako wersjonowany snapshot przez porty.
 ## Etapy
 
 1. Settings/version i Employee Compensation z migracją stawek.
-2. Porty snapshotów i deterministic calculation engine.
+2. Pobranie snapshotów przez serwisy właścicielskie i deterministic calculation engine.
 3. Preview oraz golden tests na przypadkach SMS2.
 4. Report snapshot/generate/history i eksporty.
-5. Closure port, close/reopen i integracja blokad Time/Absence/SMS reprocess.
+5. Close/reopen i integracja blokad Time/Absence/SMS reprocess przez `PayrollService`.
 6. Angular settings/reports i reporting events.
 
 ## Migracja i testy
@@ -62,6 +66,5 @@ opcjonalny Leave i cross-tenant.
 ## Zależności i ukończenie
 
 Wymaga Employee, Time Tracking, Entitlements i Audit; Leave jest opcjonalnym
-źródłem przez port. Gotowe, gdy raport można odtworzyć ze snapshotu bez odczytu
+źródłem przez `LeaveManagementService`. Gotowe, gdy raport można odtworzyć ze snapshotu bez odczytu
 bieżących tabel modułów źródłowych.
-

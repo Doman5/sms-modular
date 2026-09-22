@@ -21,7 +21,7 @@ rocznej puli w encji Employee.
   jawne, nie wynikają z samego zapisu rekordu.
 - Dni liczyć w timezone tenanta według zdefiniowanego kalendarza roboczego;
   saldo zmienia się transakcyjnie przy approve/cancel.
-- Approve wywołuje `RegisterAbsenceEventCommand`; retry nie tworzy duplikatu.
+- Approve wywołuje `AbsenceEventService.register(...)`; retry nie tworzy duplikatu.
 
 ## API, permissions i zdarzenia
 
@@ -35,7 +35,7 @@ rocznej puli w encji Employee.
 
 ## Dane, frontend i dezaktywacja
 
-- Tabele types, allowances, requests z tenantem, RLS, optimistic locking i
+- Tabele types, allowances, requests z `tenant_id`, optimistic locking i
   unikalnością allowance per employee/year/type.
 - Angular: lista i kalendarz, formularz wniosku, kolejka akceptacji, saldo oraz
   ustawienia typów; route guard capability + permissions.
@@ -61,7 +61,6 @@ retry, overlap, wyłączenie capability i izolację.
 
 ## Zależności i ukończenie
 
-Wymaga Employee, Absence Events, Entitlements, Audit i Integration Runtime.
+Wymaga Employee, Absence Events, Entitlements i Audit.
 Opcjonalnie dostarcza Payroll dane o płatnych urlopach. Gotowe, gdy bazowa
 nieobecność działa nadal po wyłączeniu dodatku.
-

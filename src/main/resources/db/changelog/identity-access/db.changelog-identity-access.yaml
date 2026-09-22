@@ -1,1 +1,258 @@
-databaseChangeLog: []
+databaseChangeLog:
+  - changeSet:
+      id: identity-001-tables
+      author: sms-modular
+      changes:
+        - createTable:
+            tableName: tenant_roles
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_tenant_roles
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(120)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: tenant_roles
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_tenant_roles_tenant
+        - addUniqueConstraint:
+            tableName: tenant_roles
+            columnNames: tenant_id,id
+            constraintName: uq_tenant_roles_tenant_id
+        - addUniqueConstraint:
+            tableName: tenant_roles
+            columnNames: tenant_id,code
+            constraintName: uq_tenant_roles_code
+        - createTable:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_role_permissions
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permission_code
+                  type: varchar(80)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: role_permissions
+            baseColumnNames: tenant_id,role_id
+            referencedTableName: tenant_roles
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_role_permissions_role
+        - addForeignKeyConstraint:
+            baseTableName: role_permissions
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_role_permissions_tenant
+        - addUniqueConstraint:
+            tableName: role_permissions
+            columnNames: tenant_id,role_id,permission_code
+            constraintName: uq_role_permissions_code
+        - createTable:
+            tableName: user_accounts
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_user_accounts
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: normalized_email
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: display_name
+                  type: varchar(160)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: password_hash
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: must_change_password
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: session_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: failed_attempts
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_failed_at
+                  type: timestamp with time zone
+              - column:
+                  name: locked_until
+                  type: timestamp with time zone
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: user_accounts
+            baseColumnNames: tenant_id,role_id
+            referencedTableName: tenant_roles
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_user_accounts_role
+        - addForeignKeyConstraint:
+            baseTableName: user_accounts
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_user_accounts_tenant
+        - addUniqueConstraint:
+            tableName: user_accounts
+            columnNames: normalized_email
+            constraintName: uq_user_accounts_email
+        - sql:
+            sql: "ALTER TABLE user_accounts ADD CONSTRAINT chk_user_accounts_status CHECK (status in ('ACTIVE', 'DISABLED'))"
+        - createIndex:
+            tableName: user_accounts
+            indexName: ix_user_accounts_tenant_status
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: status
+        - createTable:
+            tableName: platform_accounts
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_platform_accounts
+                    nullable: false
+              - column:
+                  name: normalized_email
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: password_hash
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: must_change_password
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: session_version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: failed_attempts
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_failed_at
+                  type: timestamp with time zone
+              - column:
+                  name: locked_until
+                  type: timestamp with time zone
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: platform_accounts
+            columnNames: normalized_email
+            constraintName: uq_platform_accounts_email
+        - sql:
+            sql: "ALTER TABLE platform_accounts ADD CONSTRAINT chk_platform_accounts_status CHECK (status in ('ACTIVE', 'DISABLED'))"

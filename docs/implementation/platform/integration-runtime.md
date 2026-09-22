@@ -1,55 +1,40 @@
-# Moduł Integration Runtime
+# Integration Runtime
 
-## Cel, zakres i analiza SMS2
+## Cel i zakres
 
-Dostarczyć wspólny runtime dla outboxa, jobów, retry, leasingu, webhooków i
-transportu SMS. Uogólnić mechanizmy z `SmsProcessingJob`/`SmsProcessingWorker`
-oraz `ProjectSmsOutboxWorker` w `../sms2`, bez przenoszenia ich logiki domenowej.
+Dodać trwałe tło dla realnych zdarzeń i integracji: outbox/inbox, retry, leasing,
+webhooki, dead letters i SMS transport. Implementować dopiero przed pierwszym
+konsumentem zdarzeń, razem z nim.
 
-Moduł nie interpretuje SMS, nie wybiera odbiorców projektu i nie posiada danych
-biznesowych właścicielskich modułów.
+## Model i warstwy
 
-## Model i kontrakty
-
-- `OutboxMessage`: tenant, topic, aggregate, payload version, payload, status,
-  attempt, availableAt, leaseOwner/Until, correlation i idempotency key.
-- `InboxReceipt`: konsument, event ID i tenant; gwarantuje idempotentną konsumpcję.
-- `JobContext` odtwarza tenant i correlation context na czas jednego zadania.
-- Retry: exponential backoff z jitter, maksymalna liczba prób, `DEAD_LETTER` i
-  ręczne ponowienie z audytem.
-- `SmsDispatchPort` przyjmuje wiadomość i odbiorcę z modułu Projects; adapter
-  przechowuje status techniczny oraz weryfikuje webhook dostarczenia.
+- Jedna encja JPA `OutboxMessage` i jedna `InboxReceipt`.
+- Każdy rekord z danymi klienta ma tenant ID; worker jawnie przekazuje UUID do
+  wywoływanego serwisu.
+- `OutboxService` zapisuje zdarzenie w transakcji serwisu właściciela.
+- Repository jest package-private i każda metoda wymaga tenant ID.
+- `SmsDispatchProvider` może mieć interfejs, bo komunikuje się z zewnętrznym
+  dostawcą. Wewnętrzna kolejka nie dostaje portu i adaptera delegującego.
+- Retry ma limit, backoff, idempotencję i stan dead letter.
 
 ## Konfiguracja i bezpieczeństwo
 
-- Sekrety SMS-Gate wyłącznie z secret managera/środowiska.
-- Webhook: podpis, timestamp, replay window, idempotency i routing do zapisanego
-  dispatchu; payload nie może narzucić tenanta.
-- Konfiguracja: enable, batch size, lease, retry i timeout; walidacja startowa
-  nie pozwala włączyć workera bez kompletnej integracji.
-- Metryki: lag, retry, dead letters, lease recovery, provider latency i statusy.
-
-## API i frontend
-
-Brak ogólnego API outboxa dla klienta. Platform admin otrzymuje odczyt dead
-letters i audytowane retry. UI domenowe pokazuje status przez projekcję właściciela,
-nie przez surowy rekord infrastruktury.
+- Sekrety SMS-Gate są z zewnętrznego secret managera/środowiska.
+- Podpis, timestamp i replay window webhooka są walidowane przed obsługą.
+- Tenant pochodzi z zapisanego routingu dispatchu, nie z payloadu webhooka.
+- API operatora wymaga permission oraz jawnego tenant filtra.
+- Metryki obejmują lag, retry, dead letters, odzyskanie lease i czas providera.
 
 ## Etapy
 
-1. Outbox/inbox, transakcyjna publikacja i RLS.
-2. Scheduler, bezpieczny leasing i odzyskanie wygasłego lease.
-3. Rejestr handlerów, wersjonowanie payloadu i dead-letter.
-4. Adapter SMS provider, podpisane webhooki i `SmsDispatchPort`.
-5. Panel operacyjny, metryki, alerty i runbook retry.
+1. Dodać tabele outbox/inbox i indeksy dla używanych zapytań.
+2. Dodać transakcyjną publikację, idempotentny odbiór i worker tenant-scoped.
+3. Dodać lease, retry i dead letter, gdy wymaga tego SMS Inbound.
+4. Dodać rzeczywisty provider SMS i podpisany webhook.
+5. Dodać panel operacyjny po wdrożeniu Audit i Identity.
 
-## Migracja, testy i zależności
+## Testy i zależności
 
-Nie importować aktywnych lease z SMS2. Przed cutover stare kolejki należy
-opróżnić; wiadomości historyczne importować jako zakończone projekcje. Testować
-crash po zapisie, równoległe workery, wygaśnięcie lease, duplikat, kolejność,
-obcy tenant, błędy 429/5xx i niepoprawny webhook.
-
-Wymaga Fundamentu i Tenancy; używa Audit. Odblokowuje SMS Inbound, AI,
-reporting i wysyłkę projektową.
-
+Testować dwa tenanty, obcy UUID, duplikat eventu, równoległy leasing, crash,
+retry, timeout handlera, podpis webhooka i retry provider errors. Wymaga
+Tenancy, Identity i Audit. Odblokowuje SMS Inbound oraz wysyłki Projects.

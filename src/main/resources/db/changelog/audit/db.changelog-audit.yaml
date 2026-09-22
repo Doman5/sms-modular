@@ -1,83 +1,100 @@
 databaseChangeLog:
   - changeSet:
-      id: audit-001-audit-entries
+      id: audit-001-table
       author: sms-modular
-      comment: Append-only tenant and platform audit entries with simple RLS and safe JSON shape.
+      changes:
+        - createTable:
+            tableName: audit_entries
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_audit_entries
+                    nullable: false
+              - column:
+                  name: tenant_id
+                  type: uuid
+              - column:
+                  name: actor_type
+                  type: varchar(24)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: actor_id
+                  type: uuid
+              - column:
+                  name: module_code
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action_code
+                  type: varchar(80)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurred_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: correlation_id
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: metadata
+                  type: jsonb
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: audit_entries
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_audit_entries_tenant
+        - createIndex:
+            tableName: audit_entries
+            indexName: ix_audit_entries_tenant_time
+            columns:
+              - column:
+                  name: tenant_id
+              - column:
+                  name: occurred_at
+              - column:
+                  name: id
+        - createIndex:
+            tableName: audit_entries
+            indexName: ix_audit_entries_actor_time
+            columns:
+              - column:
+                  name: actor_id
+              - column:
+                  name: occurred_at
+        - sql:
+            sql: "ALTER TABLE audit_entries ADD CONSTRAINT chk_audit_entries_result CHECK (result IN ('SUCCESS', 'DENIED'))"
+        - sql:
+            sql: "ALTER TABLE audit_entries ADD CONSTRAINT chk_audit_entries_actor CHECK ((actor_type = 'SYSTEM' AND actor_id IS NULL) OR (actor_type IN ('TENANT_USER', 'PLATFORM_USER') AND actor_id IS NOT NULL))"
+  - changeSet:
+      id: audit-002-owner-permission
+      author: sms-modular
       changes:
         - sql:
-            sql: |
-              CREATE TABLE audit_entries (
-                id uuid NOT NULL,
-                tenant_id uuid NULL,
-                actor_type varchar(32) NOT NULL,
-                actor_id uuid NULL,
-                module varchar(96) NOT NULL,
-                action varchar(96) NOT NULL,
-                subject_type varchar(96) NOT NULL,
-                subject_id uuid NULL,
-                outcome varchar(32) NOT NULL,
-                occurred_at timestamp with time zone NOT NULL,
-                correlation_id varchar(64) NOT NULL,
-                metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-                CONSTRAINT pk_audit_entries PRIMARY KEY (id),
-                CONSTRAINT fk_audit_entries_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
-                CONSTRAINT ck_audit_entries_actor_type CHECK (actor_type IN ('USER', 'SYSTEM', 'PLATFORM', 'LEGACY_SYSTEM')),
-                CONSTRAINT ck_audit_entries_platform_scope CHECK (tenant_id IS NOT NULL OR actor_type = 'PLATFORM'),
-                CONSTRAINT ck_audit_entries_module CHECK (module ~ '^[A-Z][A-Z0-9_.-]{0,95}$'),
-                CONSTRAINT ck_audit_entries_action CHECK (action ~ '^[A-Z][A-Z0-9_.-]{0,95}$'),
-                CONSTRAINT ck_audit_entries_subject_type CHECK (subject_type ~ '^[A-Z][A-Z0-9_.-]{0,95}$'),
-                CONSTRAINT ck_audit_entries_outcome CHECK (outcome IN ('SUCCESS', 'FAILURE', 'DENIED', 'PARTIAL', 'NOOP')),
-                CONSTRAINT ck_audit_entries_correlation CHECK (correlation_id ~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'),
-                CONSTRAINT ck_audit_entries_metadata CHECK (jsonb_typeof(metadata) = 'object')
-              )
-        - sql:
-            sql: |
-              CREATE INDEX idx_audit_entries_tenant_occurred
-                ON audit_entries (tenant_id, occurred_at DESC, id DESC)
-        - sql:
-            sql: |
-              CREATE INDEX idx_audit_entries_tenant_subject
-                ON audit_entries (tenant_id, subject_type, subject_id, occurred_at DESC)
-        - sql:
-            sql: |
-              CREATE INDEX idx_audit_entries_tenant_operation
-                ON audit_entries (tenant_id, module, action, occurred_at DESC)
-        - sql:
-            sql: |
-              CREATE INDEX idx_audit_entries_platform_occurred
-                ON audit_entries (occurred_at DESC, id DESC)
-        - sql:
-            splitStatements: false
-            stripComments: false
-            sql: |
-              ALTER TABLE audit_entries ENABLE ROW LEVEL SECURITY;
-              ALTER TABLE audit_entries FORCE ROW LEVEL SECURITY;
-              CREATE POLICY audit_entry_isolation ON audit_entries
-                FOR SELECT
-                USING (
-                  tenant_id IS NOT NULL
-                  AND tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid
-                );
-              CREATE POLICY audit_entry_insert_isolation ON audit_entries
-                FOR INSERT
-                WITH CHECK (
-                  (tenant_id IS NOT NULL
-                   AND tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
-                  OR (tenant_id IS NULL AND current_setting('app.audit_platform', true) = 'true')
-                );
-              REVOKE UPDATE, DELETE ON audit_entries FROM PUBLIC;
-      rollback:
-        - sql:
-            sql: DROP POLICY IF EXISTS audit_entry_insert_isolation ON audit_entries
-        - sql:
-            sql: DROP POLICY IF EXISTS audit_entry_isolation ON audit_entries
-        - sql:
-            sql: DROP INDEX IF EXISTS idx_audit_entries_platform_occurred
-        - sql:
-            sql: DROP INDEX IF EXISTS idx_audit_entries_tenant_operation
-        - sql:
-            sql: DROP INDEX IF EXISTS idx_audit_entries_tenant_subject
-        - sql:
-            sql: DROP INDEX IF EXISTS idx_audit_entries_tenant_occurred
-        - sql:
-            sql: DROP TABLE IF EXISTS audit_entries
+            sql: "INSERT INTO role_permissions (id, tenant_id, role_id, permission_code) SELECT gen_random_uuid(), tenant_id, id, 'AUDIT_READ' FROM tenant_roles WHERE code = 'OWNER' ON CONFLICT (tenant_id, role_id, permission_code) DO NOTHING"

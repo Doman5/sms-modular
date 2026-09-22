@@ -1,67 +1,19 @@
 import { Routes } from '@angular/router';
-import { permissionGuard, sessionGuard } from './core/auth/auth.guards';
+import { passwordGuard, permissionGuard, platformGuard, sessionGuard, tenantGuard } from './core/auth.guards';
 
 export const routes: Routes = [
-  {
-    path: 'forbidden',
-    loadComponent: () =>
-      import('./features/access/forbidden-page.component').then(
-        (module) => module.ForbiddenPageComponent,
-      ),
-  },
-  {
-    path: 'platform',
-    loadComponent: () =>
-      import('./features/tenancy/platform-shell.component').then(
-        (module) => module.PlatformShellComponent,
-      ),
-    children: [
-      { path: '', pathMatch: 'full', redirectTo: 'tenants' },
-      {
-        path: 'tenants',
-        canMatch: [permissionGuard],
-        data: { permission: 'PLATFORM_TENANT_READ' },
-        loadComponent: () =>
-          import('./features/tenancy/platform-tenants-page.component').then(
-            (module) => module.PlatformTenantsPageComponent,
-          ),
-      },
-      {
-        path: 'integration-runtime',
-        canMatch: [permissionGuard],
-        data: { permission: 'PLATFORM_INTEGRATION_READ' },
-        loadComponent: () =>
-          import('./features/integration-runtime/integration-runtime-page.component').then(
-            (module) => module.IntegrationRuntimePageComponent,
-          ),
-      },
-    ],
-  },
-  {
-    path: '',
-    loadComponent: () =>
-      import('./features/shell/shell.component').then((module) => module.ShellComponent),
-    children: [
-      {
-        path: '',
-        canMatch: [sessionGuard],
-        loadComponent: () =>
-          import('./features/home/home-page.component').then((module) => module.HomePageComponent),
-      },
-      {
-        path: 'settings',
-        canMatch: [sessionGuard],
-        loadComponent: () =>
-          import('./features/tenancy/tenant-settings-page.component').then(
-            (module) => module.TenantSettingsPageComponent,
-          ),
-      },
-      {
-        path: 'audit',
-        loadChildren: () =>
-          import('./features/audit/audit.routes').then((module) => module.AUDIT_ROUTES),
-      },
-    ],
-  },
+  { path: 'login', loadComponent: () => import('./features/identity/login-page').then(m => m.LoginPage) },
+  { path: 'change-password', loadComponent: () => import('./features/identity/password-page').then(m => m.PasswordPage), canActivate: [passwordGuard] },
+  { path: 'forbidden', loadComponent: () => import('./features/identity/forbidden-page').then(m => m.ForbiddenPage) },
+  { path: '', loadComponent: () => import('./features/shell/shell-page').then(m => m.ShellPage), canActivate: [sessionGuard], children: [
+    { path: '', pathMatch: 'full', redirectTo: 'home' },
+    { path: 'home', loadComponent: () => import('./features/home/home-page').then(m => m.HomePage) },
+    { path: 'users', loadComponent: () => import('./features/identity/users-page').then(m => m.UsersPage), canActivate: [tenantGuard, permissionGuard('USER_READ')] },
+    { path: 'roles', loadComponent: () => import('./features/identity/roles-page').then(m => m.RolesPage), canActivate: [tenantGuard, permissionGuard('ROLE_READ')] },
+    { path: 'settings', loadComponent: () => import('./features/tenancy/settings-page').then(m => m.SettingsPage), canActivate: [tenantGuard, permissionGuard('TENANT_READ')] },
+    { path: 'audit', loadComponent: () => import('./features/audit/audit-page').then(m => m.AuditPage), canActivate: [tenantGuard, permissionGuard('AUDIT_READ')] },
+    { path: 'platform/tenants', loadComponent: () => import('./features/tenancy/platform-tenants-page').then(m => m.PlatformTenantsPage), canActivate: [platformGuard, permissionGuard('PLATFORM_TENANT_READ')] },
+    { path: 'platform/audit', loadComponent: () => import('./features/audit/audit-page').then(m => m.AuditPage), canActivate: [platformGuard, permissionGuard('PLATFORM_AUDIT_READ')] },
+  ] },
   { path: '**', redirectTo: '' },
 ];

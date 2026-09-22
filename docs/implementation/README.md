@@ -1,97 +1,83 @@
-# SMS Modular — indeks planów implementacyjnych
+# SMS Modular — kolejność implementacji
 
-Ten katalog przekłada [architekturę docelową](../sms-modular-architecture-outline.md)
-na plany gotowe do implementacji. Każdy moduł ma jednego właściciela danych,
-publiczne kontrakty i niezależne kryteria ukończenia. Sąsiednie repozytorium
-`../sms2` jest źródłem reguł i danych migracyjnych, ale nie wzorcem architektury
-multi-tenant.
+Dokumenty opisują zachowania legacy, wymagania produktu i makiety. Implementacja
+powstaje etapami jako prosty modularny monolit warstwowy.
 
-Wspólny kierunek interfejsu i zasada maksymalnie dwóch kliknięć są pokazane w
-[propozycjach UI](../ui-proposals/README.md).
+Etapy 0–4 są wdrożone. Następny etap to Entitlements, potem Usage.
 
-## Jak korzystać z dokumentów
+## Zasady realizacji
 
-1. Przed modułami wykonać [fundament](foundation.md).
-2. Realizować moduły według fal poniżej; elementy w jednej fali można prowadzić
-   równolegle dopiero po spełnieniu bramki poprzedniej fali.
-3. Encje i repozytoria są prywatne. Zależność oznacza użycie kontraktu modułu,
-   nigdy dostęp do jego tabel.
-4. Każdy etap kończy się testami backendu, Angulara, izolacji tenanta i kontraktu.
-5. Migrację danych wykonywać przez adaptery właścicielskich modułów.
+1. Moduł dostarcza działającą pionową funkcję: baza, API, serwis i UI, gdy UI ma
+   zastosowanie.
+2. W obrębie modułu stosujemy `controller`, `service`, `repository`, `entity`,
+   `dto`; encja JPA jest jedynym modelem zapisu.
+3. Reguły i przejścia biznesowe są w serwisach.
+4. Moduły nie używają cudzych encji ani repozytoriów. Do komunikacji służą
+   identyfikatory i małe DTO/publiczne metody tylko wtedy, gdy istnieje konsument.
+5. Nie dodajemy pustych modułów, changelogów ani providerów przed ich użyciem.
+6. Każda tabela tenantowa jest izolowana przez jawne `tenantId` w kontrolerach,
+   serwisach i zapytaniach oraz przez tenantowe klucze i ograniczenia bazy.
 
 ## Roadmapa
 
-| Fala | Moduły | Bramka wyjściowa |
+| Etap | Moduły | Bramka ukończenia |
 | --- | --- | --- |
-| 0 | [Fundament](foundation.md) | PostgreSQL, Liquibase, Problem Details, Testcontainers i test granic modułów |
-| 1A | [Tenancy](platform/tenancy.md) | `TenantContext` oraz RLS potwierdzone testem dwóch tenantów |
-| 1B | [Audit](platform/audit.md), [Integration Runtime](platform/integration-runtime.md) | audyt i outbox przenoszą tenant oraz correlation ID |
-| 1C | [Identity & Access](platform/identity-access.md) | JWT, permissions i kontekst sesji działają tenant-scoped |
-| 1D | [Entitlements](platform/entitlements.md), potem [Usage](platform/usage.md) | backend rozróżnia permission, entitlement i limit |
-| 2A | [Employee Directory](base/employee-directory.md) | stabilny kontrakt projekcji pracownika |
-| 2B | [Time Tracking](base/time-tracking.md), [Absence Events](base/absence-events.md) | gotowe komendy domenowe dla SMS |
-| 3 | [SMS Inbound](base/sms-inbound.md), potem [AI Interpretation](base/ai-interpretation.md) | pełny inbound → parser/AI → czas/nieobecność/review |
-| 4A | [Leave Management](addons/leave-management.md), [Projects](addons/projects.md), [Tool Assignment](addons/tool-assignment.md) | dodatki chronione entitlementami |
-| 4B | [Planning](addons/planning.md), [Payroll](addons/payroll.md) | zależności dodatków i snapshoty bez dostępu do obcych tabel |
-| 5 | [Reporting](reporting/read-models.md) | dashboard i raporty korzystają z read modeli |
-| 6 | [Migracja i cutover](migration/sms2-cutover.md) | próbna migracja uzgodniona licznościowo i finansowo |
+| 0 | Reset i szkielet | minimalny backend, frontend, Compose i master changelog |
+| 1 | Foundation | Problem Details, correlation ID, walidacja, PostgreSQL/Liquibase i podstawowe reguły ArchUnit |
+| 2 | [Tenancy](platform/tenancy.md) | jedna encja tenant, tenant service i tenantowe repozytorium |
+| 3 | [Identity & Access](platform/identity-access.md) | logowanie, JWT, permissions i bezpieczne endpointy tenant/platform |
+| 4 | [Audit](platform/audit.md) | zapis audytu dla operacji zmieniających stan i filtrowany odczyt |
+| 5 | [Entitlements](platform/entitlements.md), potem [Usage](platform/usage.md) | serwerowa decyzja planu, dodatku i limitu |
+| 6 | [Employee Directory](base/employee-directory.md) | kartoteka i tenantowe wyszukiwanie pracowników |
+| 7 | [Time Tracking](base/time-tracking.md), [Absence Events](base/absence-events.md) | rejestracja czasu i nieobecności |
+| 8 | [Integration Runtime](platform/integration-runtime.md), [SMS Inbound](base/sms-inbound.md) | trwały inbound, idempotencja, kolejka review i integracja transportowa |
+| 9 | [AI Interpretation](base/ai-interpretation.md) | niejednoznaczne wiadomości trafiają do interpretacji lub review |
+| 10 | [Leave Management](addons/leave-management.md), [Projects](addons/projects.md), [Tool Assignment](addons/tool-assignment.md) | dodatki z permission i capability |
+| 11 | [Planning](addons/planning.md), [Payroll](addons/payroll.md) | planowanie zależne od Projects i rozliczenia oparte na snapshotach |
+| 12 | [Reporting](reporting/read-models.md) | dashboard/raporty przez serwisy odczytu, read model dopiero przy potrzebie wydajnościowej |
+| 13 | [Migracja i cutover](migration/sms2-cutover.md) | próbny import uzgodniony i gotowa procedura przełączenia |
 
-## Graf zależności
+Tenancy najpierw dostarcza tabelę i serwis. Publiczne endpointy tenantów są
+udostępniane dopiero po wdrożeniu Identity, aby nie wystawić niezabezpieczonego
+API administracyjnego.
+
+## Zależności
 
 ```mermaid
 flowchart TD
     F[Foundation] --> T[Tenancy]
-    T --> A[Audit]
-    T --> IR[Integration Runtime]
-    A --> IAM[Identity & Access]
-    IR --> IAM
-    IAM --> E[Entitlements]
+    T --> I[Identity & Access]
+    I --> A[Audit]
+    A --> E[Entitlements]
     E --> U[Usage]
     U --> EMP[Employee Directory]
     EMP --> TIME[Time Tracking]
     EMP --> ABS[Absence Events]
-    TIME --> SMS[SMS Inbound]
-    ABS --> SMS
+    TIME --> IR[Integration Runtime]
+    ABS --> IR
+    IR --> SMS[SMS Inbound]
     SMS --> AI[AI Interpretation]
     ABS --> LEAVE[Leave Management]
-    EMP --> PROJ[Projects]
-    EMP --> TOOL[Tool Assignment]
-    PROJ --> PLAN[Planning]
+    EMP --> PROJECTS[Projects]
+    EMP --> TOOLS[Tool Assignment]
+    PROJECTS --> PLAN[Planning]
     TIME --> PAY[Payroll]
-    LEAVE -. optional data .-> PAY
-    EMP --> R[Reporting]
-    TIME --> R
-    ABS --> R
-    LEAVE --> R
-    PROJ --> R
-    PAY --> R
-    TOOL --> R
-    R --> M[Migration & Cutover]
+    LEAVE --> PAY
+    EMP --> REPORTS[Reporting]
+    TIME --> REPORTS
+    ABS --> REPORTS
+    SMS --> REPORTS
+    REPORTS --> MIGRATION[SMS2 migration]
 ```
 
-## Kontrakty przekrojowe
+## Bramka jakościowa modułu
 
-| Kontrakt | Właściciel | Konsumenci |
-| --- | --- | --- |
-| `TenantId`, `TenantContext` | Tenancy | wszystkie moduły tenant-scoped |
-| `ActorRef`, `AuditPort` | Audit | wszystkie komendy zmieniające stan |
-| `OutboxEvent`, `JobContext` | Integration Runtime | SMS, AI, raportowanie i integracje |
-| `CapabilityKey`, `EntitlementSnapshot` | Entitlements | backend, shell Angular i dodatki |
-| `UsageMetric`, `UsageMeter` | Usage | SMS, AI, użytkownicy, pracownicy, projekty |
-| `EmployeeSummary`, `EmployeeDirectoryPort` | Employee Directory | czas, nieobecności, dodatki |
-| `RegisterWorkEntryCommand` | Time Tracking | SMS Inbound |
-| `RegisterAbsenceEventCommand` | Absence Events | SMS Inbound i Leave Management |
-| `InterpretSmsPort` | AI Interpretation | SMS Inbound |
-| `SmsDispatchPort` | Integration Runtime | Projects |
+- Testy serwisu potwierdzają reguły biznesowe i przypadki brzegowe.
+- Testy PostgreSQL sprawdzają migracje, relacje i izolację dwóch tenantów.
+- Testy API sprawdzają walidację i kodowane błędy.
+- Frontend obsługuje loading, empty, error, forbidden i potwierdzenie zapisu.
+- Test ArchUnit blokuje dostęp modułu do obcych encji i repozytoriów.
+- `tenantId` zawsze pochodzi z principalu albo rekordu zaufanego zadania.
 
-## Globalna definicja ukończenia
-
-- migracja Liquibase posiada rollback albo udokumentowaną procedurę odtworzenia;
-- wszystkie tabele klienta mają `tenant_id`, RLS i tenant-scoped indeksy;
-- API jest w `/api/v1`, a administracja platformy w `/api/platform/v1`;
-- test udowadnia brak odczytu i zapisu między tenantami;
-- permission i entitlement są sprawdzane po stronie backendu;
-- zdarzenia i joby posiadają tenant, correlation ID, wersję i idempotency key;
-- frontend obsługuje loading, empty, validation, forbidden i retryable error;
-- OpenAPI, metryki, logi bez danych wrażliwych oraz runbook operacyjny są aktualne;
-- plan migracji SMS2 dla modułu jest wykonany lub oznaczony jako greenfield.
+Migracja SMS2 następuje dopiero po modułach, które są właścicielami
+importowanych danych. Każdy import jest powtarzalny i generuje raport kolizji.

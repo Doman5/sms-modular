@@ -38,7 +38,7 @@ wywołania/budżet AI oraz projektowe SMS outbound.
 
 ## Etapy
 
-1. Katalog metryk, okresy, counters, receipts i RLS.
+1. Katalog metryk, okresy, counters, receipts, indeksy i ograniczenia unikalności.
 2. Atomowy meter z ochroną przed wyścigiem i retry.
 3. Integracja z Entitlements i kontekstem sesji.
 4. Integracje kolejno: users, employees, inbound SMS, AI, outbound SMS.

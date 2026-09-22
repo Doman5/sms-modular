@@ -1,35 +1,22 @@
-# Runbook cyklu życia tenanta
-
-Tenancy udostępnia operacje platformowe wymagające granularnych uprawnień
-`PLATFORM_TENANT_SUSPEND`, `PLATFORM_TENANT_ACTIVATE` i
-`PLATFORM_TENANT_CLOSE`. Administrator platformy jest osobnym principalem;
-bootstrap jego konta i logowanie realizuje dopiero Identity & Access.
+# Tenancy — operacje cyklu życia
 
 ## Suspend
 
-1. Zweryfikuj tenant ID i powód operacji w systemie operatorskim.
-2. Wywołaj `POST /api/platform/v1/tenants/{tenantId}/suspend`.
-3. Potwierdź odpowiedź `status=SUSPENDED` oraz zachowanie danych.
-4. Sprawdź, że komendy tenantowe otrzymują problem `TENANT_SUSPENDED`, a
-   administracyjny `GET /api/v1/tenant` nadal działa dla zweryfikowanego
-   principala tenanta.
-
-Suspend nie usuwa danych i może zostać odwrócony przez `activate`.
+Zmiana statusu odbywa się przez `TenantService` i zapisuje `updatedAt`. Identity
+odrzuca nowe komendy biznesowe zawieszonego tenanta. Odczyt administracyjny oraz
+eksport pozostają dostępne według uprawnień.
 
 ## Activate
 
-`POST /api/platform/v1/tenants/{tenantId}/activate` działa wyłącznie dla
-`SUSPENDED`. Próba aktywacji `CLOSED` jest odrzucana; nie ma ścieżki ponownego
-otwarcia.
+Dozwolone jest wznowienie tylko tenanta w statusie `SUSPENDED`. Aktywacja
+przywraca możliwość wykonywania komend, ale nie zmienia użytkowników, pakietów
+ani ich danych.
 
 ## Close
 
-1. Poza tym modułem uzgodnij i wykonaj wymagany eksport danych oraz decyzję o
-   retencji. Tenancy nie udaje ukończenia eksportu ani audytu.
-2. Wywołaj `POST /api/platform/v1/tenants/{tenantId}/close` z uprawnieniem
-   `PLATFORM_TENANT_CLOSE`.
-3. Zapisz odpowiedź zawierającą `status=CLOSED` i niepuste `closedAt`.
-4. Zablokuj dalsze komendy domenowe i monitoruj odrzucone operacje.
+Close jest trwały. Przed zamknięciem operator uzgadnia eksport i retencję.
+Serwis zmienia status oraz `closedAt`, nie usuwa danych modułów. Fizyczne
+usuwanie wymaga odrębnej procedury zatwierdzonej przez politykę retencji.
 
-Close nie jest `DELETE`, nie kasuje rekordów i jest nieodwracalne. Fizyczne
-usuwanie, eksport/audyt i retencja zostają w odpowiednich późniejszych falach.
+Każda operacja jest autoryzowana przez Identity i zapisywana w Audit po
+wdrożeniu tego modułu.

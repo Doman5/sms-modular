@@ -16,7 +16,8 @@ po publikacji jest przypadkiem użycia Projects.
 - `PlanEntry(id, tenantId, planId, projectId, employeeId, note?, position)`.
 - Draft jest bieżącą wersją planu ze optimistic locking; publikacja tworzy
   niezmienny snapshot/version do raportowania.
-- Project i Employee muszą istnieć, być aktywni i należeć do tenanta.
+- Project i Employee muszą istnieć, być aktywni i należeć do tenanta; walidacja
+  odbywa się przez `ProjectService` i `EmployeeService` z jawnym `tenantId`.
 - Ten sam pracownik nie może mieć sprzecznych przydziałów dnia; dokładna reguła
   wieloprojektowości ma być zapisana jako walidator, nie constraint SMS2.
 - Aktywacja i każde użycie wymagają jednocześnie `PLANNING` i `PROJECTS`.
@@ -33,15 +34,16 @@ po publikacji jest przypadkiem użycia Projects.
 
 ## Dane i frontend
 
-- `plans`, `plan_entries`, opcjonalna tabela wersji snapshot; RLS, tenant/date
-  index i złożone FK logicznie walidowane przez porty właścicieli.
+- `plans`, `plan_entries`, opcjonalna tabela wersji snapshot; indeks tenant/date
+  i klucze obce. Reguły dotyczące danych Projects i Employee sprawdzają ich
+  serwisy.
 - Angular `/plan`, `/plan/:date`: kalendarz, edycja draftu, konflikt, publikacja,
   unsaved changes i odświeżenie po 409.
 - Wyłączenie Planning blokuje edycję i ukrywa trasy, nie usuwa planów.
 
 ## Etapy
 
-1. Porty Project/Employee i model plan/draft/version.
+1. Encje planu/draft/version oraz walidacja przez `ProjectService` i `EmployeeService`.
 2. Query kalendarza/dnia oraz conflict validation.
 3. Save/publish/correct z audytem i optimistic locking.
 4. Angular calendar/editor i guards dwóch capabilities.
@@ -60,4 +62,3 @@ duplikat pracownika, zależność capability, timezone i zachowanie wersji.
 Wymaga Projects i Employee oraz Platform Core. Odblokowuje planistyczne read
 modele. Gotowe, gdy wyłączenie Projects przy aktywnym Planning jest niemożliwe,
 a Planning nie importuje repozytorium Projects.
-

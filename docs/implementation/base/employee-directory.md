@@ -20,7 +20,8 @@ nie należą do API repozytorium Employee.
   istnieć w dwóch tenantach, bo routing SMS ustala tenant wcześniej.
 - Email pracownika, jeśli obecny, nie jest kontem użytkownika i nie musi być
   globalnie unikalny.
-- Publiczne `EmployeeId`, `EmployeeSummary` i `EmployeeDirectoryPort`; bez encji.
+- `EmployeeService` udostępnia potrzebne operacje innym modułom przez proste
+  metody i DTO. Encja oraz repozytorium pozostają częścią modułu Employee.
 
 ## API, permissions i zdarzenia
 
@@ -36,7 +37,8 @@ nie należą do API repozytorium Employee.
 ## Dane i zależności
 
 - Tabela `employees`; unique `(tenant_id, normalized_phone)`, indeks listy po
-  `(tenant_id, status, last_name, first_name)`, RLS i złożone FK dla konsumentów.
+  `(tenant_id, status, last_name, first_name)` i ograniczenia sprawdzające
+  powiązania z tenantem. Każde zapytanie przyjmuje jawne `tenantId`.
 - Tworzenie/aktywacja korzysta z `UsageMeter(ACTIVE_EMPLOYEES)`; każda zmiana z
   Audit. Moduł nie importuje Time, Leave, Payroll ani Projects.
 
@@ -49,9 +51,9 @@ nie należą do API repozytorium Employee.
 
 ## Etapy
 
-1. Model, normalizacja telefonu, Liquibase, RLS i repozytorium prywatne.
+1. Encja, normalizacja telefonu, Liquibase, indeksy i repozytorium.
 2. Create/update/status z limitami, optimistic locking i audytem.
-3. Query/list/detail, OpenAPI i publiczna projekcja portu.
+3. Query/list/detail, OpenAPI i metody serwisu zwracające DTO.
 4. Zdarzenia outbox i integracja read modeli.
 5. Angular lista/formularz/szczegóły oraz capability/permission guards.
 6. Adapter importu SMS2 rozdzielający pola do właścicielskich modułów.
@@ -61,11 +63,10 @@ nie należą do API repozytorium Employee.
 Import zachowuje UUID, normalizuje telefony i raportuje kolizje przed zapisem.
 Stawki oraz dni urlopowe trafiają do plików importowych Payroll/Leave, a nie do
 `employees`. Testować walidację, unikalność per tenant, limit aktywnych osób,
-optimistic lock, deactivate z historią, port projekcji i ekran formularza.
+optimistic lock, deactivate z historią i ekran formularza.
 
 ## Zależności i ukończenie
 
 Wymaga Tenancy, Identity, Entitlements, Usage i Audit. Odblokowuje wszystkie
-moduły workforce i dodatki. Gotowe, gdy żaden konsument nie potrzebuje encji
-Employee ani bezpośredniego zapytania do jej tabeli.
-
+moduły workforce i dodatki. Gotowe, gdy moduły korzystają z publicznych metod
+`EmployeeService` i DTO, a nie z bezpośredniego dostępu do repozytorium Employee.

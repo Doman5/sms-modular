@@ -34,8 +34,9 @@ przechowuje klucza dostawcy per tenant w pierwszej wersji.
 
 ## API i frontend
 
-Brak publicznego endpointu dowolnego promptu. `InterpretSmsPort` jest kontraktem
-wewnętrznym. Administrator SMS widzi w szczegółach źródło, confidence, model i
+Brak publicznego endpointu dowolnego promptu. `AiInterpretationService` udostępnia
+wewnętrzną metodę przyjmującą DTO. Interfejs dostawcy AI jest używany wyłącznie
+do integracji z zewnętrzną usługą. Administrator SMS widzi w szczegółach źródło, confidence, model i
 powód review; nie widzi sekretów ani chain-of-thought.
 
 ## Etapy
@@ -55,6 +56,6 @@ brak PII w logach oraz brak bezpośredniego dostępu do domen docelowych.
 
 ## Zależności i ukończenie
 
-Wymaga SMS Inbound, Usage i Integration Runtime. Udostępnia wyłącznie
-`InterpretSmsPort`. Gotowe, gdy awaria dostawcy zawsze prowadzi do review i nie
+Wymaga SMS Inbound, Usage i Integration Runtime. Udostępnia metodę
+`AiInterpretationService.interpret(...)`. Gotowe, gdy awaria dostawcy zawsze prowadzi do review i nie
 blokuje trwałego przyjęcia wiadomości.

@@ -32,12 +32,14 @@ historię dispatchu widoczną dla użytkownika.
   `PROJECT_MESSAGE_SEND`; capability `PROJECTS`.
 - Zdarzenia `ProjectCreated/StatusChanged`, `ProjectAssignmentChanged`,
   `ProjectMessageRequested/RecipientStatusChanged`.
-- Konsumuje Employee projection, `SmsDispatchPort`, Usage i Audit.
+- Korzysta z `EmployeeService` dla danych pracownika, `IntegrationRuntimeService`
+  do wysyłki oraz `UsageService` i `AuditService`.
 
 ## Dane, frontend i entitlement
 
 - `projects`, `project_assignments`, `project_message_dispatches/recipients` z
-  tenantem, RLS i złożonymi FK; provider webhook nie wybiera tenanta z payloadu.
+  `tenant_id`, kluczami obcymi i indeksami. Zapytania używają jawnego `tenantId`;
+  webhook dostawcy nie wybiera tenanta z payloadu.
 - Angular `/projects`, `/projects/:id`: dane, przypisania, raport i historia
   wiadomości. Zakładka planowania jest dostarczana tylko przez Planning.
 - Wyłączenie dodatku zatrzymuje nowe dispatches i komendy; zapisane projekty,
@@ -45,10 +47,10 @@ historię dispatchu widoczną dla użytkownika.
 
 ## Etapy
 
-1. Project lifecycle, RLS, API i lista/szczegóły Angular.
+1. Encja Project, indeksy, API i lista/szczegóły Angular.
 2. Assignment z walidacją Employee i okresów.
 3. Zdarzenia i podstawowy raport właścicielski.
-4. Draft/dispatch biznesowy, Usage i `SmsDispatchPort`.
+4. Draft/dispatch biznesowy, Usage i wywołanie `IntegrationRuntimeService`.
 5. Webhook statusów przez Integration Runtime, retry tylko failed recipients.
 6. Import SMS2 i zgodność raportów.
 
@@ -64,4 +66,3 @@ retry failed-only, duplikat webhooka, limit i wyłączenie capability.
 Wymaga Employee, Entitlements, Usage, Audit i Integration Runtime. Odblokowuje
 Planning i read modele. Gotowe, gdy moduł nie posiada encji planu dnia ani kodu
 klienta konkretnego dostawcy SMS.
-

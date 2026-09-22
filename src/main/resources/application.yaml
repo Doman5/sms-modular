@@ -5,6 +5,12 @@ spring:
     timeout-per-shutdown-phase: 30s
   jackson:
     time-zone: UTC
+  data:
+    web:
+      pageable:
+        default-page-size: 25
+        max-page-size: 100
+        one-indexed-parameters: false
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/sms_modular}
     username: ${SPRING_DATASOURCE_USERNAME:sms_modular_runtime}
@@ -29,31 +35,30 @@ server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
   forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
-app:
-  environment: ${APP_ENVIRONMENT:local}
-  integration-runtime:
-    enabled: ${INTEGRATION_RUNTIME_ENABLED:false}
-    batch-size: ${INTEGRATION_RUNTIME_BATCH_SIZE:25}
-    lease-duration: ${INTEGRATION_RUNTIME_LEASE_DURATION:60s}
-    poll-interval: ${INTEGRATION_RUNTIME_POLL_INTERVAL:5s}
-    max-attempts: ${INTEGRATION_RUNTIME_MAX_ATTEMPTS:8}
-    initial-backoff: ${INTEGRATION_RUNTIME_INITIAL_BACKOFF:2s}
-    max-backoff: ${INTEGRATION_RUNTIME_MAX_BACKOFF:15m}
-    jitter-ratio: ${INTEGRATION_RUNTIME_JITTER_RATIO:0.2}
-    handler-timeout: ${INTEGRATION_RUNTIME_HANDLER_TIMEOUT:30s}
-    worker-threads: ${INTEGRATION_RUNTIME_WORKER_THREADS:4}
-    sms:
-      enabled: ${INTEGRATION_RUNTIME_SMS_ENABLED:false}
-      provider: ${INTEGRATION_RUNTIME_SMS_PROVIDER:disabled}
-      webhook-enabled: ${INTEGRATION_RUNTIME_SMS_WEBHOOK_ENABLED:false}
-  cors:
-    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
-  security:
-    jwt-issuer-uri: ${JWT_ISSUER_URI:}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
-  api-docs:
-    path: /v3/api-docs
+
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:4200}
+  security:
+    jwt-secret-base64: ${AUTH_JWT_SECRET_BASE64:JdoYHPXNJn1/nAlnASdKZY5urdaSN9K1+i+/mc7tqQ4=}
+    bootstrap-platform-email: ${BOOTSTRAP_PLATFORM_EMAIL:admin@admin.pl}
+    bootstrap-platform-password: ${BOOTSTRAP_PLATFORM_PASSWORD:admin123admin123}

@@ -7,8 +7,9 @@ przekazać komendę do Time/Absence albo skierować wiadomość do review. Źró
 `../sms2/src/main/java/com/domanski/sms/sms`, migracje `0004`, `0015`, `0016`,
 `0022` oraz Angular `pages/sms` i `core/api/sms-*`.
 
-Usunąć bezpośrednie relacje JPA do Employee/Absence/Attendance. AI ma osobny port.
-Moduł bazowy nie wysyła potwierdzeń ani odpowiedzi.
+Nie łączyć encji SMS z encjami innych modułów; zapisywać ich identyfikatory i
+sprawdzać dane przez metody serwisów. Moduł bazowy nie wysyła potwierdzeń ani
+odpowiedzi.
 
 ## Model i przepływ
 
@@ -29,14 +30,17 @@ Moduł bazowy nie wysyła potwierdzeń ani odpowiedzi.
 - `/api/v1/sms`: list/detail/reparse/resolve; permissions `SMS_READ`,
   `SMS_REVIEW`, capability `SMS_INBOUND`.
 - Manual resolve wywołuje publiczną komendę właściciela i jest idempotentne.
-- Konsumuje `EmployeeDirectoryPort`, `RegisterWorkEntryCommand`,
-  `RegisterAbsenceEventCommand`, `InterpretSmsPort`, Usage i outbox.
+- Wywołuje `EmployeeService`, `TimeTrackingService`, `AbsenceEventService`,
+  `AiInterpretationService` i `UsageService`; stan wiadomości oraz zadania
+  zapisuje przez własne repozytorium i Integration Runtime.
 - Kody: `SMS_ROUTE_UNKNOWN`, `SMS_SIGNATURE_INVALID`, `SMS_EMPLOYEE_UNKNOWN`,
   `SMS_REVIEW_REQUIRED`, `SMS_ALREADY_RESOLVED`.
 
 ## Dane, bezpieczeństwo i obserwowalność
 
-- `sms_messages` z RLS oraz route mapping jako konfiguracja platformy.
+- `sms_messages` z indeksem tenant/provider/external ID oraz route mapping jako
+  konfiguracja platformy. Każde zapytanie danych klienta przyjmuje jawne
+  `tenantId`; izolację wymusza kod zapytań i ograniczenia bazy danych.
 - Treść może zawierać dane osobowe: szyfrowanie at rest na poziomie platformy,
   retencja, brak w logach i ograniczony permission do szczegółów.
 - Metryki: accepted/duplicate/review/completed/error, lag, parser outcome, unknown
@@ -53,10 +57,10 @@ Moduł bazowy nie wysyła potwierdzeń ani odpowiedzi.
 
 ## Etapy
 
-1. Model wiadomości, routing, migracje, RLS i retencja.
+1. Encja wiadomości, routing, migracje, indeksy i retencja.
 2. Webhook security, idempotencja i transakcyjny outbox.
 3. Worker, employee resolution i parsery regułowe przeniesione po testach golden.
-4. Adaptery komend Time/Absence oraz stanowa maszyna przetwarzania.
+4. Wywołania serwisów Time/Absence oraz stanowa maszyna przetwarzania.
 5. Review/reparse/resolve API i Angular.
 6. Podłączenie AI, usage, metryk, alertów i runbooka.
 
@@ -73,4 +77,3 @@ i gwarancję braku outbound.
 Wymaga Employee, Time, Absence, Integration Runtime, Usage i Audit. AI jest
 opcjonalnym technicznym krokiem mimo bazowego capability. Gotowe po pełnym
 przepływie webhook → komenda/review bez bezpośredniego zapisu obcej tabeli.
-

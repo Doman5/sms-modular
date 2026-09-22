@@ -1,71 +1,56 @@
-# Moduł Tenancy
+# Tenancy
 
-## Cel, zakres i źródła SMS2
+## Cel i zakres
 
-Moduł jest właścicielem firmy, jej statusu, locale, strefy czasowej oraz
-`TenantContext`. SMS2 nie ma odpowiednika; wszystkie obecne tabele są globalne.
-Źródłem ryzyk są migracje w `../sms2/src/main/resources/db/changelog/changes`,
-gdzie telefon, email i kod projektu mają globalne ograniczenia.
+Zarządzać organizacją, jej statusem, strefą czasową i locale. Wspólny schemat
+zawiera wiele tenantów. `Tenant` jest jedną encją JPA; przejścia statusu i
+walidację wykonuje `TenantService`.
 
-Poza zakresem: użytkownicy, pakiety, billing, konfiguracja domenowa i oddziały.
+Poza zakresem: konta, logowanie, plany, dodatki, billing i ustawienia domenowe.
 
 ## Model i reguły
 
-- `Tenant(id, slug, name, status, timezone, locale, createdAt, updatedAt,
-  closedAt)`; statusy `ACTIVE`, `SUSPENDED`, `CLOSED`.
-- `slug` jest globalnie unikalny i niezmienny po onboardingu.
-- `SUSPENDED` blokuje komendy biznesowe, zachowując administracyjny odczyt.
-- `CLOSED` wymaga wcześniejszego eksportu i nie usuwa danych synchronicznie.
-- `TenantId` i `TenantContext` są publicznym kontraktem; encja pozostaje prywatna.
+- `Tenant`: UUID, globalnie unikalny i niezmienny slug, nazwa, status,
+  timezone, locale, `createdAt`, `updatedAt`, `closedAt`.
+- Statusy: `ACTIVE`, `SUSPENDED`, `CLOSED`.
+- Suspend blokuje operacje biznesowe, ale zachowuje odczyt administracyjny.
+- Close jest nieodwracalne i nie usuwa rekordów synchronicznie.
+- Serwis waliduje slug, nazwę, IANA timezone, locale oraz dozwolone przejścia.
 
-## API i uprawnienia
+## Persystencja i tenant isolation
 
-- Platforma: CRUD kontrolowany w `/api/platform/v1/tenants`, suspend i close jako
-  osobne komendy; wymagane permissions `PLATFORM_TENANT_*`.
-- Tenant: `GET /api/v1/tenant` i późniejsze `PATCH` tylko dla
-  `TENANT_SETTINGS_EDIT`.
-- Zwykłe API nie przyjmuje `tenantId`; jest ono pobierane z principalu.
+- Jedna tabela `tenants`, bez RLS.
+- Encja i repozytorium są używane wyłącznie przez Tenancy; inne moduły
+  korzystają z `TenantService` i prostych DTO.
+- Każda tabela przyszłych danych klienta ma `tenant_id NOT NULL` i FK do
+  `tenants`.
+- Tenantowe zapytania muszą zawierać tenant UUID. Repozytorium udostępnia
+  wyłącznie sygnatury tenant-scoped dla danych klienta.
+- Kontroler tenantowy otrzymuje tenant UUID ze zweryfikowanego principalu.
+  Publiczne endpointy zostaną wystawione po Identity.
 
-## Dane, RLS i konfiguracja
+## API i frontend
 
-- `tenants` jest tabelą platformową bez RLS. Każda przyszła tabela klienta ma
-  `tenant_id NOT NULL REFERENCES tenants(id)`.
-- Transakcja ustawia `SET LOCAL app.tenant_id`; polityka porównuje kolumnę z
-  `current_setting('app.tenant_id', true)`.
-- Rola aplikacji nie ma `BYPASSRLS`; migracje używają osobnej roli.
-- Filtr HTTP po uwierzytelnieniu tworzy kontekst, a interceptor transakcyjny
-  ustawia kontekst DB. Czyszczenie następuje zawsze w `finally`.
-- Metryki: brak kontekstu, odrzucone żądania zawieszonego tenanta i błędy RLS.
+Po ukończeniu Identity:
 
-## Frontend
-
-W Fali 1A shell korzysta tymczasowo z `GET /api/v1/tenant` i nie ma
-przełącznika firmy. Docelowy kontekst sesji z `/api/v1/me/context` zostanie
-dostarczony przez moduł Identity & Access w Fali 1C. Widok ustawień pokazuje
-nazwę, timezone, locale i status, a operacje platformowe powstają w oddzielnej
-przestrzeni routingu.
+- platforma: tworzenie, lista, szczegóły, suspend, activate i close pod
+  `/api/platform/v1/tenants`;
+- tenant: odczyt i edycja własnych ustawień pod `/api/v1/tenant`;
+- `tenantId` platformowego tenant API pochodzi z path, a tenant API nie przyjmuje
+  go od klienta;
+- Angular: lista tenantów platformy oraz ustawienia organizacji.
 
 ## Etapy
 
-1. Model i migracja `tenants`, bootstrap pierwszego administratora platformy.
-2. `TenantContext` dla HTTP, transakcji i testów.
-3. Bazowa polityka RLS oraz helper do stosowania jej w migracjach modułów.
-4. Platformowe API cyklu życia i audytowalne zdarzenia `Tenant*`.
-5. Kontekst sesji i ustawienia tenanta w Angularze.
-6. Runbook suspend/close oraz przygotowanie eksportu.
+1. Dodać tabelę, unikalność slug, ograniczenia pól i indeks statusu.
+2. Dodać jedną encję JPA i tenantowe repozytorium.
+3. Dodać serwis create/read/update/suspend/activate/close z transakcjami.
+4. Po Identity dodać chronione platformowe i tenantowe kontrolery.
+5. Dodać widoki Angular i audyt po wdrożeniu Audit.
 
-Bootstrap administratora platformy jest celowo odroczony do `identity-access`;
-Tenancy nie tworzy atrapowego konta ani lokalnego JWT. Eksport, audyt i retencja
-po `CLOSED` są odroczone do właściwych fal. Operacyjny opis przejść znajduje się
-w [runbooku cyklu życia](tenancy-runbook.md).
+## Testy i zależności
 
-## Migracja i testy
-
-Migracja SMS2 tworzy jednego tenanta przed importem innych danych. Testy muszą
-potwierdzić brak kontekstu, obcy tenant, pooling połączeń, worker context,
-statusy `SUSPENDED/CLOSED`, globalną unikalność slug oraz zachowanie strefy czasu.
-
-## Zależności i ukończenie
-
-Wymaga Fundamentu. Odblokowuje wszystkie moduły. Gotowe, gdy RLS blokuje odczyt
-i zapis między dwoma tenantami także przy użyciu bezpośredniego repozytorium.
+Sprawdzić slug, niepoprawny timezone/locale, aktualizację, zamkniętego tenanta,
+dozwolone przejścia i daty. Testy PostgreSQL mają potwierdzić ograniczenia oraz
+że zapytanie serwisu dla tenant A nie zwraca danych tenant B. Wymaga Foundation.
+Odblokowuje Identity oraz wszystkie moduły tenantowe.

@@ -18,13 +18,13 @@ Payroll. Time Tracking przyjmuje ustrukturyzowaną komendę.
 - Unique `(tenant_id, employee_id, work_date)` oraz idempotency source reference.
 - Źródło: manual, SMS lub import; wskazuje ID źródła, bez FK do tabeli SMS.
 - Walidować dodatni czas, poprawność granic, nakładanie przedziałów, zamknięty
-  okres Payroll i kolizję z Absence przez publiczny port.
+  okres Payroll i kolizję z Absence przez publiczne metody ich serwisów.
 
 ## Kontrakty, API i zdarzenia
 
-- `RegisterWorkEntryCommand` z tenant context, employee ID, datą, przedziałem,
+- `TimeTrackingService.registerEntry(tenantId, ...)` z employee ID, datą, przedziałem,
   źródłem i idempotency key; wynik rozróżnia applied/duplicate/conflict/review.
-- `WorkTimeSnapshotPort` udostępnia dane Payroll, nie encje.
+- `TimeTrackingService.getPayrollSnapshot(tenantId, ...)` zwraca DTO dla Payroll.
 - `/api/v1/employees/{employeeId}/work-days`, miesięczne summary oraz CRUD dnia;
   permissions `TIME_READ`, `TIME_EDIT`; capability `TIME_TRACKING`.
 - Zdarzenia `WorkDayCreated/Corrected/Deleted` i `WorkEntryRejected`.
@@ -32,7 +32,9 @@ Payroll. Time Tracking przyjmuje ustrukturyzowaną komendę.
 
 ## Dane, frontend i obserwowalność
 
-- `work_days`, `work_intervals`, oba z tenantem, RLS i złożonymi FK.
+- `work_days`, `work_intervals`, oba z `tenant_id`, kluczami obcymi i ograniczeniami.
+- Każde odczytanie lub zapis przyjmuje jawne `tenantId`; brak ukrytego
+  `TenantContext` i RLS.
 - Indeksy employee/date i tenant/date dla raportów; sumy aktualizowane w tej samej
   transakcji lub liczone deterministycznie z przedziałów.
 - Angular: zakładka czasu na pracowniku, miesięczne podsumowanie, ręczne dodanie,
@@ -41,11 +43,11 @@ Payroll. Time Tracking przyjmuje ustrukturyzowaną komendę.
 
 ## Etapy
 
-1. Model, constraints, RLS i obliczanie sum.
-2. Komendy manualne z Employee port, audytem i optimistic locking.
+1. Encje, constraints, Liquibase i obliczanie sum.
+2. Komendy manualne z `EmployeeService`, audytem i optimistic locking.
 3. Query API, summary i frontend.
 4. `RegisterWorkEntryCommand` dla SMS oraz idempotencja źródła.
-5. Snapshot Payroll i port sprawdzania zamknięcia okresu.
+5. Snapshot Payroll i sprawdzanie zamknięcia przez `PayrollService`.
 6. Zdarzenia i read modele.
 
 ## Migracja i testy
@@ -57,7 +59,6 @@ absence conflict, closed period oraz Angular validation.
 
 ## Zależności i ukończenie
 
-Wymaga Employee Directory, Audit, Integration Runtime i capability bazowego.
-Konsumuje opcjonalny port konfliktów Absence oraz closure Payroll bez twardej
-zależności do ich tabel. Odblokowuje SMS, Payroll i Reporting.
-
+Wymaga Employee Directory, Audit i capability bazowego. Sprawdza konflikty przez
+`AbsenceEventService`, a zamknięcie okresu przez `PayrollService`; nie czyta ich
+tabel bezpośrednio. Odblokowuje SMS, Payroll i Reporting.

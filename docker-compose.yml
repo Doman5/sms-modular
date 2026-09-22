@@ -25,6 +25,9 @@ services:
       APP_ENVIRONMENT: docker
       SERVER_PORT: 8080
       ALLOWED_ORIGINS: http://localhost:4200
+      AUTH_JWT_SECRET_BASE64: ${AUTH_JWT_SECRET_BASE64:?Set a Base64-encoded secret of at least 32 random bytes}
+      BOOTSTRAP_PLATFORM_EMAIL: ${BOOTSTRAP_PLATFORM_EMAIL:-}
+      BOOTSTRAP_PLATFORM_PASSWORD: ${BOOTSTRAP_PLATFORM_PASSWORD:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sms_modular
       SPRING_DATASOURCE_USERNAME: sms_modular_runtime
       SPRING_DATASOURCE_PASSWORD: sms_modular_runtime_local

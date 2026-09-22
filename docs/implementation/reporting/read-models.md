@@ -2,8 +2,8 @@
 
 ## Cel, zakres i analiza SMS2
 
-Budować dashboard, podsumowania zespołu i raporty przekrojowe bez bezpośredniego
-łączenia tabel modułów w transakcji domenowej. Źródła:
+Budować dashboard, podsumowania zespołu i raporty przekrojowe jako warstwę
+odczytu, bez zmiany danych domenowych. Źródła:
 `../sms2/src/main/java/com/domanski/sms/dashboard`, `teamsummary`, odpowiednie
 kontrolery/DTO oraz Angular `pages/dashboard`, `pages/reports` i
 `pages/team-summary`.
@@ -19,18 +19,17 @@ domenowych i nie jest źródłem prawdy dla Payroll.
   kompletności danych.
 - Projekcje dodatków istnieją tylko, gdy capability jest aktywne; brak dodatku
   daje jawny brak sekcji, nie zera sugerujące dane biznesowe.
-- Konsumenci używają wersjonowanych zdarzeń outbox. `InboxReceipt` gwarantuje
-  idempotencję, a projection checkpoint pozwala ocenić świeżość.
-- Każda projekcja ma `tenant_id`, `sourceVersion/updatedAt` i RLS.
+- Na początku `ReportingService` składa DTO z metod odczytu modułów źródłowych.
+  Nie tworzyć osobnego event busa, inboxa ani projekcji trwałych bez wykazanego
+  problemu wydajnościowego.
+- Wszystkie metody przekazują jawne `tenantId` i stosują filtrowanie danych
+  klienta na poziomie repozytorium.
 
 ## Spójność, przebudowa i błędy
 
-- Model jest eventually consistent; API zwraca `dataAsOf`.
-- Handler jest idempotentny i odporny na zdarzenie starsze niż aktualna wersja.
-- Rebuild działa tenant po tenantcie, zapisuje postęp i przełącza wersję projekcji
-  dopiero po sukcesie. Nie blokuje komend domenowych.
-- Brak/nieobsługiwane zdarzenie trafia do dead-letter i alertu; nie jest cicho
-  pomijane.
+- Raporty na żywo odzwierciedlają dane zwrócone przez serwisy modułów.
+- Jeśli obciążenie uzasadni agregację, dodać konkretną tabelę read modelu i
+  aktualizować ją przez istniejący mechanizm Integration Runtime.
 
 ## API, permissions i frontend
 
@@ -45,30 +44,27 @@ domenowych i nie jest źródłem prawdy dla Payroll.
 ## Dane i obserwowalność
 
 - Osobne tabele projekcji według widoku, nie jedna uniwersalna tabela JSON.
-- Indeksy tenant/period i tenant/employee/period; brak FK do tabel źródłowych,
-  ponieważ projekcja jest odbudowywalna.
-- Metryki: projection lag, handler failures, dead letters, rebuild progress,
-  query latency i różnica liczności podczas kontroli.
+- Dla agregatów dodać tylko indeksy potrzebne konkretnym raportom.
+- Metryki: query latency, niekompletne odpowiedzi i różnica liczności podczas
+  kontroli.
 
 ## Etapy
 
-1. Versioned event envelope, inbox i pierwszy minimalny dashboard projection.
-2. Handlery Employee, Time, Absence i SMS review.
-3. Query API, freshness metadata i Angular dashboard.
+1. Query DTO potrzebne z Employee, Time, Absence i SMS.
+2. `ReportingService` oraz query API dla dashboardu.
+3. Angular dashboard ze stanem loading/error i sekcjami dodatków.
 4. Team summary i eksporty.
-5. Handlery dodatków Leave, Projects, Payroll i Tools.
-6. Rebuild, panel operacyjny, alerty i porównanie z SMS2.
+5. Dodawanie raportów Leave, Projects, Payroll i Tools.
+6. Dopiero przy potwierdzonej potrzebie wydajnościowej dodać trwały read model.
 
 ## Migracja i testy
 
-Nie importować agregatów SMS2 jako źródła prawdy. Zbudować projekcje z
-zaimportowanych domen, a następnie porównać KPI, minuty i liczności z wynikami
-starego Dashboard/TeamSummary. Testować duplikaty i zmianę kolejności eventów,
-rebuild, lag, dwa tenanty, brak dodatku, częściowy błąd i eksporty.
+Nie importować agregatów SMS2 jako źródła prawdy. Porównać KPI, minuty i liczności
+z wynikami starego Dashboard/TeamSummary. Sprawdzić dwa tenanty, brak dodatku,
+częściowy błąd i eksporty.
 
 ## Zależności i ukończenie
 
-Wymaga Integration Runtime i stabilnych zdarzeń co najmniej Employee, Time,
-Absence oraz SMS. Dodatki można podpinać później. Gotowe, gdy żaden query handler
-Reporting nie importuje repozytorium właścicielskiego modułu.
-
+Wymaga publicznych metod odczytu Employee, Time, Absence i SMS. Dodatki można
+podpinać później. Gotowe, gdy dashboard prezentuje dane modułów i nie zapisuje
+ich w imieniu właścicieli.

@@ -34,8 +34,8 @@ rezerwacje, lokalizacje i przypisanie do projektu.
 
 ## Dane, frontend i obserwowalność
 
-- `tools`, `tool_assignments`; partial unique index na aktywne wydanie, RLS i
-  indeks tenant/employee/returnedAt.
+- `tools`, `tool_assignments`; partial unique index na aktywne wydanie i indeks
+  tenant/employee/returnedAt. Zapytania są filtrowane po jawnym `tenantId`.
 - Angular `/tools`, `/tools/:id`: katalog, formularz, issue/return, historia;
   zakładka pracownika pokazuje aktywne i historyczne wydania.
 - Metryki: aktywne wydania, przeterminowanie tylko po przyszłym dodaniu due date,
@@ -44,7 +44,7 @@ rezerwacje, lokalizacje i przypisanie do projektu.
 ## Etapy
 
 1. Tool catalog, constraints, CRUD/status i Angular list/detail.
-2. Issue/return z Employee port, audytem i optimistic locking.
+2. Issue/return z walidacją przez `EmployeeService`, audytem i optimistic locking.
 3. Historia narzędzia i pracownika oraz zdarzenia read modelu.
 4. Entitlement/permission guards, eksport listy i runbook rozliczenia pracownika.
 

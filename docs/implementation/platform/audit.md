@@ -1,49 +1,56 @@
-# Moduł Audit
+# Audit
 
-## Cel, zakres i analiza SMS2
+## Stan implementacji
 
-Zapewnić niezmienny, tenant-scoped ślad operacji użytkownika, systemu i
-administratora platformy. Zachować użyteczne idee z
-`../sms2/src/main/java/com/domanski/sms/audit`, lecz zastąpić zamknięte enumy
-`AuditAction`/`AuditEntityType` stabilnymi kodami modułowymi i dodać tenant,
-correlation ID oraz wynik operacji. Migracje źródłowe: `0008`–`0010`.
+Etap 4 obejmuje tabelę `audit_entries`, jedną encję JPA, zapis append-only
+przez serwis, allow-listę metadanych, audyt zmian Tenancy i Identity oraz
+logowania znanych kont. Zapis zachodzi w transakcji operacji źródłowej;
+odmowa logowania znanego konta jest utrwalana wraz z licznikiem prób.
+Nieznane adresy e-mail nie generują wpisu. Blokada konta nie generuje kolejnych
+wpisów przy każdej próbie. Globalne zdarzenia platformy mają `tenant_id NULL`.
 
-Audit nie jest logiem technicznym ani magazynem pełnych payloadów.
+Odczyt firmy: `GET /api/v1/audit-logs` z `AUDIT_READ`. Odczyt platformy:
+`GET /api/platform/v1/audit-logs` z `PLATFORM_AUDIT_READ` oraz dokładnie jednym
+z `tenantId` lub `scope=global`. Filtry: `from`, `to`, `actorId`, `module`,
+`action`, `result`, `targetId` i paginacja. Brak dat oznacza ostatnie 30 dni.
+Sortowanie jest malejące po czasie i ID. UI ma listę, filtry i szczegóły na
+desktopie i mobile. Uprawnienie `AUDIT_READ` jest nadawane nowym rolom OWNER,
+a migracja uzupełnia istniejące role OWNER.
 
-## Model i kontrakt
+Nie ma publicznych operacji aktualizacji/usuwania wpisów. Retencja i eksport
+nie są częścią tego etapu.
 
-- `AuditEntry(id, tenantId?, actorType, actorId?, module, action, subjectType,
-  subjectId?, outcome, occurredAt, correlationId, metadata)`.
-- `tenantId` jest wymagany dla operacji klienta i pusty tylko dla jawnej operacji
-  platformowej; metadata ma allow-listę i nie zawiera sekretów ani treści SMS.
-- Publiczne `ActorRef` oraz `AuditPort.record(AuditCommand)`; błąd audytu dla
-  krytycznej komendy wycofuje transakcję albo zapisuje się w tym samym outboxie.
-- Wpisów nie aktualizuje się i nie usuwa przez API.
+## Cel i zakres
 
-## API, frontend i bezpieczeństwo
+Przechowywać bezpieczny, append-only ślad operacji użytkownika, systemu i
+platformy. Wpis audytu nie jest logiem technicznym ani magazynem payloadów.
 
-- `GET /api/v1/audit-logs` z filtrami czasu, aktora, modułu, akcji i subject;
-  permission `AUDIT_READ`.
-- Platformowy odpowiednik wymaga `PLATFORM_AUDIT_READ` i jawnego tenant filter.
-- Angular: tabela z paginacją serwerową i szczegóły bez surowego JSON sekretów.
-- Retencja jest zadaniem platformowym i zapisuje osobny wpis o wykonaniu.
+## Model i warstwy
+
+- Jedna encja JPA `AuditEntry` reprezentuje tabelę audytu.
+- Pola: tenant ID, aktor, moduł, akcja, typ i ID obiektu, wynik, czas,
+  correlation ID oraz allow-list metadata.
+- Tenant operacji jest jawnie przekazywany do `AuditService`.
+- Pozostałe moduły wywołują publiczną metodę `AuditService` z prostym DTO.
+- API nie udostępnia aktualizacji ani usuwania wpisów.
+
+## API i bezpieczeństwo
+
+- `GET /api/v1/audit-logs` wymaga `AUDIT_READ` i filtruje po tenant ID z sesji.
+- Platformowy endpoint wymaga `PLATFORM_AUDIT_READ` i jawnego zakresu tenant/global.
+- Metadane nie zawierają treści SMS, payloadów, promptów, sekretów, haseł ani PII.
+- Platformowe operacje dotyczące konkretnego tenanta zachowują tenant ID wpisu.
 
 ## Etapy
 
-1. Schemat, append-only repository i RLS.
-2. `ActorRef`, integracja z correlation context oraz `AuditPort`.
-3. Rejestracja zmian tenanta i identity jako pierwszych konsumentów.
-4. Query API, filtry, indeksy `(tenant_id, occurred_at)` i subject.
-5. Widok Angular oraz eksport administracyjny, jeśli zostanie wymagany prawnie.
+1. Dodać jedną encję, repository i migrację tabeli/indeksów/ograniczeń.
+2. Dodać `AuditService` z allow-listą metadanych i correlation ID.
+3. Dodać zapis zmian Tenancy i Identity w tej samej transakcji.
+4. Dodać filtrowane API, paginację, permission i Angular.
+5. Dodać kontrolowany proces retencji, jeśli będzie wymagany.
 
-## Migracja, testy i zależności
+## Testy i zależności
 
-Stare wpisy otrzymują tenant importu; nierozpoznany aktor staje się
-`LEGACY_SYSTEM`, bez wymyślania użytkownika. Testować append-only, maskowanie,
-platform/tenant scope, sortowanie, zapis w rollbackowanej transakcji i retencję.
-
-Wymaga Fundamentu i Tenancy. Udostępnia kontrakt wszystkim modułom. Ukończone,
-gdy każda komenda zmieniająca stan może zapisać spójny wpis bez importu encji Audit.
-
-Runbook RLS, append-only, migracji i odtworzenia znajduje się w
-[audit-runbook.md](audit-runbook.md).
+Testować append-only API, allow-listę, filtr tenant/platform, dwa tenanty,
+sortowanie oraz wspólny rollback wpisu i operacji źródłowej. Wymaga Tenancy i
+Identity. Odblokowuje audytowane komendy kolejnych modułów.
