@@ -58,6 +58,27 @@ describe('ApiService', () => {
     statusRequest.flush({ id: 'employee-1', status: 'INACTIVE', version: 4 });
   });
 
+  it('sends tenant-scoped work and absence commands with versions', () => {
+    api.workDays('2025-04-01', '2025-04-30', 'employee-1').subscribe();
+    const list = http.expectOne(value => value.url === '/api/v1/work-days');
+    expect(list.request.params.get('employeeId')).toBe('employee-1');
+    expect(list.request.params.has('tenantId')).toBeFalse();
+    list.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 });
+    api.createWorkDay('employee-1', '2025-04-17', [{ startTime: '08:00', endTime: '12:00' }]).subscribe();
+    const work = http.expectOne('/api/v1/employees/employee-1/work-days');
+    expect(work.request.body).toEqual({ workDate: '2025-04-17', intervals: [{ startTime: '08:00', endTime: '12:00' }] });
+    work.flush({});
+    api.createAbsenceDays('employee-1', '2025-04-18', '2025-04-19', null).subscribe();
+    const absence = http.expectOne('/api/v1/absence-days');
+    expect(absence.request.body).toEqual({ employeeId: 'employee-1', dateFrom: '2025-04-18', dateTo: '2025-04-19', note: null });
+    absence.flush([]);
+    api.cancelAbsenceDay({ id: 'absence-1', employeeId: 'employee-1', absenceDate: '2025-04-18',
+      source: 'MANUAL', note: null, status: 'ACTIVE', createdAt: '', updatedAt: '', version: 4 }).subscribe();
+    const cancel = http.expectOne('/api/v1/absence-days/absence-1/cancel');
+    expect(cancel.request.body).toEqual({ version: 4 });
+    cancel.flush({});
+  });
+
   it('does not accept tenant scope for tenant audit reads', () => {
     api.auditLogs({ tenantId: 'foreign-tenant', module: 'IDENTITY', page: 2 }, false).subscribe();
     const request = http.expectOne(value => value.url === '/api/v1/audit-logs');

@@ -1,0 +1,122 @@
+databaseChangeLog:
+  - changeSet:
+      id: workforce-001-work-days
+      author: sms-modular
+      changes:
+        - createTable:
+            tableName: work_days
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: employee_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: work_date, type: date, constraints: { nullable: false } }
+              - column: { name: status, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: source, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: total_minutes, type: integer, constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, defaultValueNumeric: 0, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            tableName: work_days
+            columnNames: tenant_id,id
+            constraintName: uq_work_days_tenant_id
+        - addForeignKeyConstraint:
+            baseTableName: work_days
+            baseColumnNames: tenant_id,employee_id
+            referencedTableName: employees
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_work_days_employee
+        - createIndex:
+            tableName: work_days
+            indexName: ix_work_days_tenant_date
+            columns:
+              - column: { name: tenant_id }
+              - column: { name: work_date }
+              - column: { name: employee_id }
+        - sql:
+            sql: "CREATE UNIQUE INDEX uq_work_days_active_date ON work_days(tenant_id,employee_id,work_date) WHERE status = 'ACTIVE'"
+        - sql:
+            sql: "ALTER TABLE work_days ADD CONSTRAINT chk_work_days_status CHECK (status IN ('ACTIVE','CANCELLED')), ADD CONSTRAINT chk_work_days_source CHECK (source = 'MANUAL'), ADD CONSTRAINT chk_work_days_minutes CHECK (total_minutes > 0)"
+        - createTable:
+            tableName: work_intervals
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: work_day_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: start_minute, type: integer, constraints: { nullable: false } }
+              - column: { name: end_minute, type: integer, constraints: { nullable: false } }
+              - column: { name: duration_minutes, type: integer, constraints: { nullable: false } }
+              - column: { name: status, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: work_intervals
+            baseColumnNames: tenant_id,work_day_id
+            referencedTableName: work_days
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_work_intervals_day
+        - createIndex:
+            tableName: work_intervals
+            indexName: ix_work_intervals_day
+            columns:
+              - column: { name: tenant_id }
+              - column: { name: work_day_id }
+              - column: { name: status }
+        - sql:
+            sql: "ALTER TABLE work_intervals ADD CONSTRAINT chk_work_intervals_time CHECK (start_minute >= 0 AND end_minute <= 1440 AND end_minute > start_minute), ADD CONSTRAINT chk_work_intervals_minutes CHECK (duration_minutes = end_minute - start_minute), ADD CONSTRAINT chk_work_intervals_status CHECK (status IN ('ACTIVE','CANCELLED'))"
+  - changeSet:
+      id: workforce-002-absence-days
+      author: sms-modular
+      changes:
+        - createTable:
+            tableName: absence_days
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: employee_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: absence_date, type: date, constraints: { nullable: false } }
+              - column: { name: source, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: note, type: varchar(2000) }
+              - column: { name: status, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, defaultValueNumeric: 0, constraints: { nullable: false } }
+        - addUniqueConstraint:
+            tableName: absence_days
+            columnNames: tenant_id,id
+            constraintName: uq_absence_days_tenant_id
+        - addForeignKeyConstraint:
+            baseTableName: absence_days
+            baseColumnNames: tenant_id,employee_id
+            referencedTableName: employees
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_absence_days_employee
+        - createIndex:
+            tableName: absence_days
+            indexName: ix_absence_days_tenant_date
+            columns:
+              - column: { name: tenant_id }
+              - column: { name: absence_date }
+              - column: { name: employee_id }
+        - sql:
+            sql: "CREATE UNIQUE INDEX uq_absence_days_active_date ON absence_days(tenant_id,employee_id,absence_date) WHERE status = 'ACTIVE'"
+        - sql:
+            sql: "ALTER TABLE absence_days ADD CONSTRAINT chk_absence_days_status CHECK (status IN ('ACTIVE','CANCELLED')), ADD CONSTRAINT chk_absence_days_source CHECK (source = 'MANUAL')"
+  - changeSet:
+      id: workforce-003-capabilities-and-permissions
+      author: sms-modular
+      changes:
+        - sql:
+            sql: "INSERT INTO module_catalog(key,type,status,depends_on) SELECT 'DETAILED_ABSENCES',type,status,depends_on FROM module_catalog WHERE key = 'LEAVE_MANAGEMENT' ON CONFLICT (key) DO NOTHING"
+        - sql:
+            sql: "UPDATE tenant_addons SET module_key = 'DETAILED_ABSENCES' WHERE module_key = 'LEAVE_MANAGEMENT'"
+        - sql:
+            sql: "UPDATE plan_modules SET module_key = 'DETAILED_ABSENCES' WHERE module_key = 'LEAVE_MANAGEMENT'"
+        - sql:
+            sql: "UPDATE module_catalog SET depends_on = 'DETAILED_ABSENCES' WHERE depends_on = 'LEAVE_MANAGEMENT'"
+        - sql:
+            sql: "DELETE FROM module_catalog WHERE key = 'LEAVE_MANAGEMENT'"
+        - sql:
+            sql: "UPDATE module_catalog SET status = 'AVAILABLE' WHERE key IN ('TIME_TRACKING','ABSENCE_EVENTS')"
+        - sql:
+            sql: "INSERT INTO role_permissions(id,tenant_id,role_id,permission_code) SELECT gen_random_uuid(),tenant_id,id,p.code FROM tenant_roles CROSS JOIN (VALUES ('TIME_READ'),('TIME_EDIT'),('ABSENCE_READ'),('ABSENCE_EDIT')) AS p(code) WHERE tenant_roles.code = 'OWNER' ON CONFLICT (tenant_id,role_id,permission_code) DO NOTHING"

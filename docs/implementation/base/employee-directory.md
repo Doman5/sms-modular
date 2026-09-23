@@ -8,7 +8,7 @@ Moduł jest właścicielem podstawowej kartoteki pracownika. Źródła:
 
 Z obecnej encji zachować dane osobowe, kontaktowe, stanowisko, status i datę
 zatrudnienia. Przenieść `hourlyRate` i wszystkie override stawek do Payroll, a
-`annualVacationDays` do Leave Management. Miesięczne podsumowania i dni pracy
+`annualVacationDays` do dodatku Szczegółowe nieobecności. Miesięczne podsumowania i dni pracy
 nie należą do API repozytorium Employee.
 
 ## Model i reguły

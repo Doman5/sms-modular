@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/entitlements/db.changelog-entitlements.yaml
   - include:
       file: db/changelog/employee/db.changelog-employee.yaml
+  - include:
+      file: db/changelog/workforce/db.changelog-workforce.yaml

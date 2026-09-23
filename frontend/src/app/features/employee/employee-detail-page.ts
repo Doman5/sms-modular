@@ -20,7 +20,10 @@ import { problemMessage } from '../../core/problem';
             @if (auth.has('EMPLOYEE_STATUS_CHANGE')) { <button type="button" [disabled]="saving()" (click)="changeStatus(person)">{{ person.status === 'ACTIVE' ? 'Dezaktywuj' : 'Aktywuj' }}</button> }
           </div>
         </div>
-        <nav class="tabs" aria-label="Sekcje pracownika"><span class="active">Podsumowanie</span></nav>
+        <nav class="tabs" aria-label="Sekcje pracownika"><span class="active">Podsumowanie</span>
+          @if (auth.has('TIME_READ') && auth.hasCapability('TIME_TRACKING')) { <a routerLink="/time" [queryParams]="{ employeeId: person.id }">Czas pracy</a> }
+          @if (auth.has('ABSENCE_READ') && auth.hasCapability('ABSENCE_EVENTS')) { <a routerLink="/absence-days" [queryParams]="{ employeeId: person.id }">Braki obecności</a> }
+        </nav>
         <section class="panel details-card" aria-label="Dane pracownika">
           <div><span>Telefon</span><strong>{{ person.phone }}</strong></div>
           <div><span>Adres e-mail</span><strong>{{ person.email || 'Nie podano' }}</strong></div>
@@ -50,7 +53,7 @@ import { problemMessage } from '../../core/problem';
     .employee-detail-page { max-width: 100rem; gap: 1rem; }.breadcrumb { display: flex; gap: .5rem; align-items: center; color: var(--app-text-muted); font-size: .85rem; }.breadcrumb a { color: inherit; }
     .detail-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }.identity { display: flex; align-items: center; gap: .9rem; }.identity h1 { margin: 0; }.avatar { width: 3.3rem; height: 3.3rem; border-radius: 50%; background: #dcf8f3; display: grid; place-items: center; color: #086e70; font-weight: 800; }
     .badges { display: flex; gap: .5rem; margin-top: .4rem; }.status, .position { display: inline-block; padding: .3rem .6rem; border-radius: 99px; background: #ddf8ec; color: #0a7955; font-size: .8rem; }.status.inactive { background: #ffe7e9; color: #a62b42; }.position { background: #e9eef8; color: #31445f; }
-    .header-actions { display: flex; gap: .5rem; }.tabs { border-bottom: 1px solid var(--app-border); }.tabs span { display: inline-block; padding: .6rem 1rem; }.tabs .active { color: var(--app-primary); border-bottom: 3px solid var(--app-primary); font-weight: 700; }
+    .header-actions { display: flex; gap: .5rem; }.tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--app-border); }.tabs span, .tabs a { display: inline-block; padding: .6rem 1rem; }.tabs a { color: var(--app-text); text-decoration: none; }.tabs .active { color: var(--app-primary); border-bottom: 3px solid var(--app-primary); font-weight: 700; }
     .details-card { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }.details-card > div { display: grid; gap: .35rem; min-width: 0; }.details-card span { color: var(--app-text-muted); font-size: .84rem; }.details-card strong { overflow-wrap: anywhere; }.details-card .note { grid-column: 1 / -1; white-space: pre-wrap; }
     .drawer-backdrop { position: fixed; inset: 4.5rem 0 0; z-index: 35; background: #142b431c; }.edit-drawer { position: fixed; z-index: 36; top: 4.5rem; bottom: 0; right: 0; width: 20rem; background: #fff; border-left: 1px solid var(--app-border); display: flex; flex-direction: column; overflow: auto; }
     .drawer-heading { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--app-border); }.drawer-heading h2 { margin: 0; }.drawer-heading button { border: 0; padding: .4rem; }

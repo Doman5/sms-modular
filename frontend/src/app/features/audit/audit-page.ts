@@ -7,7 +7,7 @@ import { problemMessage } from '../../core/problem';
 
 const moduleLabels: Record<string, string> = {
   TENANCY: 'Ustawienia', IDENTITY: 'Użytkownicy', AUTH: 'Logowanie', AUDIT: 'Audyt',
-  ENTITLEMENTS: 'Pakiet i moduły', SMS: 'SMS', TIME_TRACKING: 'Czas pracy', ABSENCE_EVENTS: 'Nieobecności',
+  ENTITLEMENTS: 'Pakiet i moduły', SMS: 'SMS', TIME_TRACKING: 'Czas pracy', ABSENCE_EVENTS: 'Braki obecności',
   EMPLOYEE_DIRECTORY: 'Pracownicy', PROJECTS: 'Projekty', PLANNING: 'Planowanie',
 };
 
@@ -68,7 +68,7 @@ const operationOptions = Object.keys(actionLabels).filter(action => action !== '
           <label>Moduł <select name="module" [(ngModel)]="module" (ngModelChange)="filterChanged()">
           <option value="">Wszystkie</option><option value="TENANCY">Ustawienia firmy</option><option value="IDENTITY">Użytkownicy i role</option>
           <option value="AUTH">Logowanie</option><option value="AUDIT">Audyt</option><option value="ENTITLEMENTS">Pakiet i moduły</option>
-          <option value="SMS">SMS</option><option value="TIME_TRACKING">Czas pracy</option><option value="ABSENCE_EVENTS">Nieobecności</option>
+          <option value="SMS">SMS</option><option value="TIME_TRACKING">Czas pracy</option><option value="ABSENCE_EVENTS">Braki obecności</option>
           <option value="EMPLOYEE_DIRECTORY">Pracownicy</option><option value="PROJECTS">Projekty</option><option value="PLANNING">Planowanie</option>
         </select></label>
           <label>Operacja <select name="action" [(ngModel)]="action" (ngModelChange)="filterChanged()">

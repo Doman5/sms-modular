@@ -17,8 +17,8 @@ porównanie priorytetów informacji.
 | 3 | Lista pracowników | [desktop + mobile](screen-catalog/06-employees-list-desktop-mobile.png) | ta sama plansza | wyszukiwanie, filtry, dodawanie i edycja |
 | 4 | Karta pracownika | [desktop](02-employee-detail.png) | [mobile](mobile/02-employee-detail-mobile.png) | profil, czas, nieobecności, projekty i narzędzia |
 | 5 | Rejestracja czasu | [desktop + mobile](screen-catalog/07-time-tracking-desktop-mobile.png) | ta sama plansza | miesiąc, wpisy dzienne i szybkie dodawanie |
-| 6 | Nieobecności | [desktop + mobile](screen-catalog/08-absences-desktop-mobile.png) | ta sama plansza | lista, kalendarz i formularz zdarzenia |
-| 7 | Urlopy | [desktop + mobile](screen-catalog/09-leave-management-desktop-mobile.png) | ta sama plansza | wnioski, limity i akceptacja |
+| 6 | Braki obecności | [desktop + mobile](screen-catalog/08-absences-desktop-mobile.png) | ta sama plansza | dni bez obecności, bez typów i sald |
+| 7 | Szczegółowe nieobecności | [desktop + mobile](screen-catalog/09-leave-management-desktop-mobile.png) | ta sama plansza | typy, zliczanie, wnioski i akceptacja |
 | 8 | Weryfikacja SMS | [desktop](03-sms-review.png) | [mobile](mobile/03-sms-review-mobile.png) | kolejka, szczegóły i decyzja |
 | 9 | Lista projektów | [desktop + mobile](screen-catalog/10-projects-list-desktop-mobile.png) | ta sama plansza | filtrowanie, statusy i utworzenie projektu |
 | 10 | Szczegóły projektu | [desktop + mobile](screen-catalog/11-project-detail-desktop-mobile.png) | ta sama plansza | zespół, postęp, czas i wiadomości |
@@ -88,7 +88,7 @@ każdej kluczowej operacji mieści się w limicie dwóch kliknięć lub dotknię
   mobile jest inną prezentacją, nie osobnym produktem ani API.
 - Przy szerokości mobilnej zastąpić boczną nawigację stałym paskiem:
   `Pulpit`, `Pracownicy`, `SMS`, `Plan`, `Więcej`.
-- `Więcej` otwiera jeden bottom sheet z: Czas pracy, Nieobecności, Projekty,
+- `Więcej` otwiera jeden bottom sheet z: Czas pracy, Braki obecności, Projekty,
   Raporty, Narzędzia i Ustawienia. Każdy obszar pozostaje osiągalny w dwóch
   dotknięciach.
 - Tabele desktopowe zamieniać na listy kart/wierszy; nie ukrywać kluczowych kolumn

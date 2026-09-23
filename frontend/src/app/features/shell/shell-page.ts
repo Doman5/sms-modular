@@ -16,6 +16,8 @@ import { AuthService } from '../../core/auth.service';
           } @else {
             <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><i class="pi pi-home" aria-hidden="true"></i>Pulpit</a>
             @if (auth.has('EMPLOYEE_READ') && auth.hasCapability('EMPLOYEE_DIRECTORY')) { <a routerLink="/employees" routerLinkActive="active"><i class="pi pi-users" aria-hidden="true"></i>Pracownicy</a> }
+            @if (auth.has('TIME_READ') && auth.hasCapability('TIME_TRACKING')) { <a routerLink="/time" routerLinkActive="active"><i class="pi pi-clock" aria-hidden="true"></i>Czas pracy</a> }
+            @if (auth.has('ABSENCE_READ') && auth.hasCapability('ABSENCE_EVENTS')) { <a routerLink="/absence-days" routerLinkActive="active"><i class="pi pi-calendar-times" aria-hidden="true"></i>Braki obecności</a> }
             @if (auth.has('USER_READ')) { <a routerLink="/users" routerLinkActive="active"><i class="pi pi-users" aria-hidden="true"></i>Użytkownicy</a> }
             @if (auth.has('ROLE_READ')) { <a routerLink="/roles" routerLinkActive="active"><i class="pi pi-shield" aria-hidden="true"></i>Role i uprawnienia</a> }
             @if (auth.has('TENANT_READ')) { <a routerLink="/settings" routerLinkActive="active"><i class="pi pi-cog" aria-hidden="true"></i>Ustawienia firmy</a> }
@@ -46,6 +48,8 @@ import { AuthService } from '../../core/auth.service';
       </nav>
       @if (moreOpen()) { <nav class="mobile-more" aria-label="Więcej opcji">
         @if (!auth.isPlatform()) {
+          @if (auth.has('TIME_READ') && auth.hasCapability('TIME_TRACKING')) { <a routerLink="/time" (click)="moreOpen.set(false)">Czas pracy</a> }
+          @if (auth.has('ABSENCE_READ') && auth.hasCapability('ABSENCE_EVENTS')) { <a routerLink="/absence-days" (click)="moreOpen.set(false)">Braki obecności</a> }
           @if (auth.has('ROLE_READ')) { <a routerLink="/roles" (click)="moreOpen.set(false)">Role i uprawnienia</a> }
           @if (auth.has('TENANT_READ')) { <a routerLink="/settings" (click)="moreOpen.set(false)">Ustawienia firmy</a> }
           @if (auth.has('AUDIT_READ')) { <a routerLink="/audit" (click)="moreOpen.set(false)">Dziennik audytu</a> }

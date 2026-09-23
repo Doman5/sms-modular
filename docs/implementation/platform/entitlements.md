@@ -9,7 +9,7 @@ istniejących tenantów. Plan jest niemodyfikowalną wersją z limitem
 
 Katalog zawiera bazowe `EMPLOYEE_DIRECTORY`, `SMS_INBOUND`,
 `AI_INTERPRETATION`, `TIME_TRACKING`, `ABSENCE_EVENTS` oraz dodatki
-`LEAVE_MANAGEMENT`, `PAYROLL`, `PROJECTS`, `PLANNING`, `TOOL_ASSIGNMENT`.
+`DETAILED_ABSENCES`, `PAYROLL`, `PROJECTS`, `PLANNING`, `TOOL_ASSIGNMENT`.
 Wszystkie mają obecnie status `PLANNED`: są widoczne, ale nie dają capability
 i nie można ich aktywować, dopóki ich funkcje nie zostaną wdrożone.
 

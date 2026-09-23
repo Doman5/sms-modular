@@ -3,9 +3,8 @@
 Dokumenty opisują zachowania legacy, wymagania produktu i makiety. Implementacja
 powstaje etapami jako prosty modularny monolit warstwowy.
 
-Etapy 0–5 są wdrożone. Etap 5 obejmuje Entitlements oraz pomiar aktywnych
-użytkowników w Usage. Pozostałe metryki Usage powstaną wraz z modułami, które
-je wytwarzają. Następny etap to Employee Directory.
+Etapy 0–7 są wdrożone. Etap 7 obejmuje ręczną ewidencję czasu pracy i bazowe
+oznaczanie dni nieobecności. Kolejny etap to Integration Runtime i SMS Inbound.
 
 ## Zasady realizacji
 
@@ -31,10 +30,10 @@ je wytwarzają. Następny etap to Employee Directory.
 | 4 | [Audit](platform/audit.md) | zapis audytu dla operacji zmieniających stan i filtrowany odczyt |
 | 5 | [Entitlements](platform/entitlements.md), potem [Usage](platform/usage.md) | wdrożone: plan BASE v1, katalog modułów, dodatki, limit aktywnych użytkowników i jego egzekwowanie |
 | 6 | [Employee Directory](base/employee-directory.md) | kartoteka i tenantowe wyszukiwanie pracowników |
-| 7 | [Time Tracking](base/time-tracking.md), [Absence Events](base/absence-events.md) | rejestracja czasu i nieobecności |
+| 7 | [Time Tracking](base/time-tracking.md), [Absence Events](base/absence-events.md) | ręczny czas pracy i dni bez obecności, bez typów i sald |
 | 8 | [Integration Runtime](platform/integration-runtime.md), [SMS Inbound](base/sms-inbound.md) | trwały inbound, idempotencja, kolejka review i integracja transportowa |
 | 9 | [AI Interpretation](base/ai-interpretation.md) | niejednoznaczne wiadomości trafiają do interpretacji lub review |
-| 10 | [Leave Management](addons/leave-management.md), [Projects](addons/projects.md), [Tool Assignment](addons/tool-assignment.md) | dodatki z permission i capability |
+| 10 | [Szczegółowe nieobecności](addons/detailed-absences.md), [Projects](addons/projects.md), [Tool Assignment](addons/tool-assignment.md) | dodatki z permission i capability |
 | 11 | [Planning](addons/planning.md), [Payroll](addons/payroll.md) | planowanie zależne od Projects i rozliczenia oparte na snapshotach |
 | 12 | [Reporting](reporting/read-models.md) | dashboard/raporty przez serwisy odczytu, read model dopiero przy potrzebie wydajnościowej |
 | 13 | [Migracja i cutover](migration/sms2-cutover.md) | próbny import uzgodniony i gotowa procedura przełączenia |
@@ -59,7 +58,7 @@ flowchart TD
     ABS --> IR
     IR --> SMS[SMS Inbound]
     SMS --> AI[AI Interpretation]
-    ABS --> LEAVE[Leave Management]
+    ABS --> LEAVE[Szczegółowe nieobecności]
     EMP --> PROJECTS[Projects]
     EMP --> TOOLS[Tool Assignment]
     PROJECTS --> PLAN[Planning]

@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import com.domanski.smsmodular.audit.api.AuditCallContext;
@@ -24,6 +25,7 @@ import com.domanski.smsmodular.common.api.ApiException;
 import com.domanski.smsmodular.common.api.PageResponse;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.CreateEmployeeRequest;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.EmployeeResponse;
+import com.domanski.smsmodular.employee.dto.EmployeeDtos.EmployeeOption;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.UpdateEmployeeRequest;
 import com.domanski.smsmodular.employee.entity.Employee;
 import com.domanski.smsmodular.employee.entity.EmployeeStatus;
@@ -68,6 +70,22 @@ public class EmployeeService {
 	}
 
 	@Transactional(readOnly = true)
+	public PageResponse<EmployeeOption> options(UUID tenantId, String search, Pageable pageable) {
+		entitlements.require(tenantId, CAPABILITY);
+		String normalized = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+		if (normalized.length() > 120) throw invalid("EMPLOYEE_SEARCH_INVALID", "Search is too long");
+		Pageable fixed = PageRequest.of(pageable.getPageNumber(), Math.min(pageable.getPageSize(), 100), LIST_ORDER);
+		return PageResponse.from(employees.search(tenantId, null, null, normalized, "", fixed)
+				.map(EmployeeOption::from));
+	}
+
+	@Transactional(readOnly = true)
+	public EmployeeOption option(UUID tenantId, UUID employeeId) {
+		entitlements.require(tenantId, CAPABILITY);
+		return EmployeeOption.from(require(tenantId, employeeId));
+	}
+
+	@Transactional(readOnly = true)
 	public List<String> positions(UUID tenantId) {
 		entitlements.require(tenantId, CAPABILITY);
 		return employees.positions(tenantId);
@@ -76,6 +94,12 @@ public class EmployeeService {
 	@Transactional(readOnly = true)
 	public long activeCount(UUID tenantId) {
 		return employees.countByTenantIdAndStatus(tenantId, EmployeeStatus.ACTIVE);
+	}
+
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void lockForScheduleChange(UUID tenantId, UUID employeeId) {
+		employees.lockByTenantIdAndId(tenantId, employeeId)
+				.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "EMPLOYEE_NOT_FOUND", "Employee was not found"));
 	}
 
 	@Transactional

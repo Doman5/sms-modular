@@ -16,7 +16,7 @@ describe('EmployeeDetailPage', () => {
   it('loads the card and activates the employee with its current version', async () => {
     await TestBed.configureTestingModule({ imports: [EmployeeDetailPage], providers: [
       provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-      { provide: AuthService, useValue: { has: () => true } },
+      { provide: AuthService, useValue: { has: () => true, hasCapability: () => true } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: employee.id }) } } },
     ] }).compileComponents();
     const http = TestBed.inject(HttpTestingController);

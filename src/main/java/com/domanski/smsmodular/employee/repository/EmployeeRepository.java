@@ -3,8 +3,10 @@ package com.domanski.smsmodular.employee.repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,9 @@ import com.domanski.smsmodular.employee.entity.EmployeeStatus;
 
 public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 	Optional<Employee> findByTenantIdAndId(UUID tenantId, UUID id);
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select e from Employee e where e.tenantId = :tenantId and e.id = :id")
+	Optional<Employee> lockByTenantIdAndId(@Param("tenantId") UUID tenantId, @Param("id") UUID id);
 	boolean existsByTenantIdAndNormalizedPhoneAndIdNot(UUID tenantId, String normalizedPhone, UUID id);
 	long countByTenantIdAndStatus(UUID tenantId, EmployeeStatus status);
 

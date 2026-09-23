@@ -49,11 +49,11 @@ model.
 | --- | --- |
 | Platforma | Tenancy, Identity & Access, Audit, Entitlements, Usage |
 | Pakiet bazowy | Employee Directory, Time Tracking, Absence Events, SMS Inbound, AI Interpretation |
-| Dodatki | Leave Management, Projects, Tool Assignment, Planning, Payroll |
+| Dodatki | Szczegółowe nieobecności, Projects, Tool Assignment, Planning, Payroll |
 | Przekrojowe | Integration Runtime, Reporting/read models |
 
-`PLANNING` wymaga `PROJECTS`. Stawki należą do Payroll, urlopy do Leave
-Management, a transport SMS do Integration Runtime. Szczegółowy podział funkcji
+`PLANNING` wymaga `PROJECTS`. Stawki należą do Payroll, klasyfikacja i rozliczenie
+nieobecności do dodatku Szczegółowe nieobecności, a transport SMS do Integration Runtime. Szczegółowy podział funkcji
 znajduje się w poszczególnych planach modułów.
 
 ## Tenant isolation
@@ -87,7 +87,7 @@ operacji.
 
 Obowiązkowe capabilities bazowe to `EMPLOYEE_DIRECTORY`, `SMS_INBOUND`,
 `AI_INTERPRETATION`, `TIME_TRACKING` i `ABSENCE_EVENTS`. Dodatki to
-`LEAVE_MANAGEMENT`, `PAYROLL`, `PROJECTS`, `PLANNING` i `TOOL_ASSIGNMENT`.
+`DETAILED_ABSENCES`, `PAYROLL`, `PROJECTS`, `PLANNING` i `TOOL_ASSIGNMENT`.
 
 ## Technologia i dane
 

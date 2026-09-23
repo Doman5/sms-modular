@@ -21,6 +21,7 @@ import com.domanski.smsmodular.audit.api.AuditCallContext;
 import com.domanski.smsmodular.common.api.PageResponse;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.CreateEmployeeRequest;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.EmployeeResponse;
+import com.domanski.smsmodular.employee.dto.EmployeeDtos.EmployeeOption;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.EmployeeVersionRequest;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.UpdateEmployeeRequest;
 import com.domanski.smsmodular.employee.entity.EmployeeStatus;
@@ -48,6 +49,18 @@ public class EmployeeController {
 	@PreAuthorize("hasAuthority('EMPLOYEE_READ')")
 	public List<String> positions() {
 		return employees.positions(current.tenantId());
+	}
+
+	@GetMapping("/options")
+	@PreAuthorize("hasAnyAuthority('EMPLOYEE_READ','TIME_READ','TIME_EDIT','ABSENCE_READ','ABSENCE_EDIT')")
+	public PageResponse<EmployeeOption> options(@RequestParam(required = false) String search, Pageable pageable) {
+		return employees.options(current.tenantId(), search, pageable);
+	}
+
+	@GetMapping("/options/{id}")
+	@PreAuthorize("hasAnyAuthority('EMPLOYEE_READ','TIME_READ','TIME_EDIT','ABSENCE_READ','ABSENCE_EDIT')")
+	public EmployeeOption option(@PathVariable UUID id) {
+		return employees.option(current.tenantId(), id);
 	}
 
 	@GetMapping("/{id}")

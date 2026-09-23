@@ -38,6 +38,12 @@ public final class EmployeeDtos {
 	public record EmployeeVersionRequest(@NotNull @PositiveOrZero Long version) {
 	}
 
+	public record EmployeeOption(UUID id, String firstName, String lastName) {
+		public static EmployeeOption from(Employee employee) {
+			return new EmployeeOption(employee.getId(), employee.getFirstName(), employee.getLastName());
+		}
+	}
+
 	public record EmployeeResponse(UUID id, String firstName, String lastName, String phone,
 			String normalizedPhone, String email, String position, String note,
 			EmployeeStatus status, LocalDate employmentDate, Instant createdAt,

@@ -1,61 +1,41 @@
-# Moduł Absence Events
+# Moduł Absence Events — Braki obecności
 
-## Cel, zakres i analiza SMS2
+## Zakres wdrożony w etapie 7
 
-Przechowywać operacyjny fakt nieobecności niezależnie od płatnego workflow
-urlopowego. Źródła: `../sms2/src/main/java/com/domanski/sms/absence`, migracje
-`0007`, `0018`, `0019` i Angular `pages/absences`.
+Pakiet bazowy oznacza wyłącznie fakt, że pracownik był nieobecny danego dnia.
+Każda data ma osobny `AbsenceDay` z pracownikiem, źródłem `MANUAL`, opcjonalną
+notatką, statusem `ACTIVE/CANCELLED` i wersją. Nie ma kategorii, akceptacji,
+sald ani naliczania dni urlopowych. Zakres w formularzu zapisuje wszystkie
+dni kalendarzowe atomowo; konflikt w jednym dniu odrzuca całość. Maksymalny
+zakres to 366 dni.
 
-Ze starego modułu zachować okres, kategorię, źródło, komentarz i konflikty.
-`VacationAllowanceService`, roczne pule i proces wniosku należą do Leave
-Management. Parser SMS należy do SMS Inbound. Ogólne `approvalStatus` nie jest
-mechanizmem urlopowym; zdarzenie może mieć status operacyjnego review.
+Data rekordu jest niezmienna. Można poprawić notatkę lub anulować dzień z
+kontrolą wersji. Anulowany rekord pozostaje w historii, nie jest pokazywany
+na bieżącej liście i nie blokuje ponownego oznaczenia tej daty.
 
-## Model i reguły
+Zapis blokuje tenantowy rekord pracownika i odrzuca dzień z aktywnym czasem
+pracy. Własna tabela ma `tenant_id`, tenantowy FK do pracownika, unikalność
+aktywnego dnia i indeksy do kalendarza. Każda zmiana trafia do audytu.
 
-- `AbsenceEvent(id, tenantId, employeeId, category, dateFrom, dateTo, source,
-  sourceReference?, processingStatus, comment?, createdAt, updatedAt, version)`.
-- `dateFrom <= dateTo`; pracownik istnieje i jest w tym samym tenantcie.
-- Source reference nie ma FK do SMS/Leave, ale ma tenant-scoped idempotency.
-- Nakładanie zdarzeń tego samego pracownika jest odrzucane lub kierowane do
-  jawnego konfliktu; reguła nie usuwa automatycznie czasu pracy.
-- Zaakceptowany urlop wywołuje tę samą komendę co inne źródła.
+## API i UI
 
-## Kontrakty, API i zdarzenia
+- `GET /api/v1/absence-days?from&to&employeeId&page` — aktywne dni.
+- `GET /api/v1/absence-days/calendar?month&employeeId` — liczby dni do kalendarza.
+- `GET /api/v1/absence-days/{id}` — szczegóły, również anulowanego dnia.
+- `POST /api/v1/absence-days` — atomowe oznaczenie zakresu dat.
+- `PUT /api/v1/absence-days/{id}` — zmiana notatki.
+- `POST /api/v1/absence-days/{id}/cancel` — anulowanie.
 
-- `AbsenceEventService.register(...)` oraz metody DTO do sprawdzenia konfliktu.
-- `/api/v1/absences`: list/filter/create; `/api/v1/absences/{id}` update/delete;
-  brak endpointu urlopowej akceptacji w module bazowym.
-- Permissions `ABSENCE_READ`, `ABSENCE_EDIT`; capability `ABSENCE_EVENTS`.
-- Zdarzenia `AbsenceEventRegistered/Changed/Removed`.
-- Błędy: `ABSENCE_RANGE_INVALID`, `ABSENCE_OVERLAP`, `WORK_TIME_CONFLICT`,
-  `PERIOD_CLOSED`.
+Odczyt wymaga `ABSENCE_READ`, zmiany `ABSENCE_EDIT`, a moduł capability
+`ABSENCE_EVENTS`. Widok `/absence-days` pokazuje kalendarz i listę; karta
+pracownika otwiera przefiltrowany widok. Nazwa w UI to „Braki obecności”.
+Wybór pracownika korzysta z ograniczonego DTO pod `/api/v1/employees/options`,
+dostępnego także dla `ABSENCE_READ` bez `EMPLOYEE_READ`.
 
-## Dane i frontend
+## Zależność od przyszłego dodatku
 
-- `absence_events` z indeksem tenant/employee/date range i unikalnym kluczem
-  źródła. Zapytania zawsze filtrują po jawnie przekazanym `tenantId`.
-- Nie tworzyć FK do wiadomości ani wniosku urlopowego.
-- Angular: lista/kalendarz nieobecności, filtrowanie, ręczny zapis i konflikt.
-  Elementy puli/akceptacji pojawiają się dopiero z capability Leave.
-
-## Etapy
-
-1. Encja, kategorie bazowe, constraints, repozytorium i Liquibase.
-2. Rejestracja, overlap i sprawdzenie pracownika przez `EmployeeService`.
-3. Konflikt z Time Tracking przez metodę `TimeTrackingService`, audyt i zamknięty okres.
-4. API query/commands i Angular.
-5. Użycie `AbsenceEventService` z SMS Inbound i Leave oraz raportowanie.
-
-## Migracja i testy
-
-Każdy stary rekord tworzy fakt `AbsenceEvent`. Dane właściwe dla urlopu są
-równolegle mapowane do Leave; `source_sms_message_id` staje się source reference.
-Porównać zakresy i kategorie. Testować overlap, granice dat, duplikat źródła,
-konflikt czasu, closed period, cross-tenant i zachowanie po wyłączeniu Leave.
-
-## Zależności i ukończenie
-
-Wymaga Employee Directory i Audit; integruje Time przez publiczne metody serwisu. Odblokowuje SMS,
-Leave, Payroll i Reporting. Gotowe, gdy zapis faktu nieobecności nie wymaga
-aktywnego dodatku Urlopy.
+Planowany dodatek `DETAILED_ABSENCES` jest właścicielem typów `VACATION`,
+`SICK_LEAVE`, `ON_DEMAND_LEAVE`, `OTHER`, ich przypisania do dni, zliczania
+oraz właściwych workflow i sald. Bazowy dzień działa niezależnie od dodatku
+i zachowuje identyfikator potrzebny do przyszłego powiązania. SMS i import
+SMS2 nie należą do etapu 7.

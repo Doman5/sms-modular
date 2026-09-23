@@ -4,9 +4,9 @@
 
 SMS Modular jest modularnym monolitem SaaS dla wielu tenantów. Jedna firma jest
 jednym tenantem. Produkt ma obowiązkowy pakiet bazowy i opcjonalne dodatki.
-Foundation, Tenancy, Identity & Access, Audit, Entitlements oraz pierwszy zakres
-Usage są zaimplementowane. Dokumenty i inwentarz SMS2 opisują cel oraz kolejność
-dalszego wdrażania.
+Foundation, Tenancy, Identity & Access, Audit, Entitlements, pierwszy zakres
+Usage, Employee Directory, Time Tracking i bazowe Absence Events są zaimplementowane.
+Dokumenty i inwentarz SMS2 opisują cel oraz kolejność dalszego wdrażania.
 
 ## Źródła prawdy
 
@@ -36,7 +36,7 @@ dalszego wdrażania.
 7. Time Tracking i Absence Events.
 8. Integration Runtime i SMS Inbound.
 9. AI Interpretation.
-10. Leave Management, Projects i Tool Assignment.
+10. Szczegółowe nieobecności, Projects i Tool Assignment.
 11. Planning i Payroll.
 12. Reporting/read models.
 13. Migracja SMS2 i cutover.

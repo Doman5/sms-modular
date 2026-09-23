@@ -85,6 +85,44 @@ export interface EmployeeInput {
   employmentDate: string;
 }
 
+export interface WorkforceEmployeeOption { id: string; firstName: string; lastName: string; }
+
+export interface WorkInterval {
+  id: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+}
+
+export interface WorkDay {
+  id: string;
+  employeeId: string;
+  workDate: string;
+  status: 'ACTIVE' | 'CANCELLED';
+  source: 'MANUAL';
+  totalMinutes: number;
+  intervals: WorkInterval[];
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+export interface WorkSummary { month: string; dayCount: number; totalMinutes: number; }
+
+export interface AbsenceDay {
+  id: string;
+  employeeId: string;
+  absenceDate: string;
+  source: 'MANUAL';
+  note: string | null;
+  status: 'ACTIVE' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+export interface AbsenceCalendarDay { date: string; count: number; }
+
 export interface SubscriptionModule {
   key: string;
   type: 'BASE' | 'ADD_ON';
@@ -112,14 +150,20 @@ export interface Subscription {
 export class ApiService {
   private readonly http = inject(HttpClient);
 
-  employees(page = 0, search = '', status = '', position = '') {
-    let params = new HttpParams().set('page', page);
+  employees(page = 0, search = '', status = '', position = '', size = 20) {
+    let params = new HttpParams().set('page', page).set('size', size);
     if (search.trim()) params = params.set('search', search.trim());
     if (status) params = params.set('status', status);
     if (position) params = params.set('position', position);
     return this.http.get<Page<Employee>>('/api/v1/employees', { params });
   }
   employeePositions() { return this.http.get<string[]>('/api/v1/employees/positions'); }
+  workforceEmployees(search = '', size = 100) {
+    let params = new HttpParams().set('size', size);
+    if (search.trim()) params = params.set('search', search.trim());
+    return this.http.get<Page<WorkforceEmployeeOption>>('/api/v1/employees/options', { params });
+  }
+  workforceEmployee(id: string) { return this.http.get<WorkforceEmployeeOption>(`/api/v1/employees/options/${id}`); }
   employee(id: string) { return this.http.get<Employee>(`/api/v1/employees/${id}`); }
   createEmployee(input: EmployeeInput & { status: Employee['status'] }) {
     return this.http.post<Employee>('/api/v1/employees', input);
@@ -129,6 +173,47 @@ export class ApiService {
   }
   setEmployeeStatus(id: string, action: 'activate' | 'deactivate', version: number) {
     return this.http.post<Employee>(`/api/v1/employees/${id}/${action}`, { version });
+  }
+
+  workDays(from: string, to: string, employeeId = '', page = 0) {
+    let params = new HttpParams().set('from', from).set('to', to).set('page', page);
+    if (employeeId) params = params.set('employeeId', employeeId);
+    return this.http.get<Page<WorkDay>>('/api/v1/work-days', { params });
+  }
+  workSummary(month: string, employeeId = '') {
+    let params = new HttpParams().set('month', month);
+    if (employeeId) params = params.set('employeeId', employeeId);
+    return this.http.get<WorkSummary>('/api/v1/work-days/summary', { params });
+  }
+  createWorkDay(employeeId: string, workDate: string, intervals: { startTime: string; endTime: string }[]) {
+    return this.http.post<WorkDay>(`/api/v1/employees/${employeeId}/work-days`, { workDate, intervals });
+  }
+  updateWorkDay(day: WorkDay, intervals: { startTime: string; endTime: string }[]) {
+    return this.http.put<WorkDay>(`/api/v1/employees/${day.employeeId}/work-days/${day.id}`,
+      { version: day.version, intervals });
+  }
+  cancelWorkDay(day: WorkDay) {
+    return this.http.post<WorkDay>(`/api/v1/employees/${day.employeeId}/work-days/${day.id}/cancel`,
+      { version: day.version });
+  }
+  absenceDays(from: string, to: string, employeeId = '', page = 0) {
+    let params = new HttpParams().set('from', from).set('to', to).set('page', page);
+    if (employeeId) params = params.set('employeeId', employeeId);
+    return this.http.get<Page<AbsenceDay>>('/api/v1/absence-days', { params });
+  }
+  absenceCalendar(month: string, employeeId = '') {
+    let params = new HttpParams().set('month', month);
+    if (employeeId) params = params.set('employeeId', employeeId);
+    return this.http.get<AbsenceCalendarDay[]>('/api/v1/absence-days/calendar', { params });
+  }
+  createAbsenceDays(employeeId: string, dateFrom: string, dateTo: string, note: string | null) {
+    return this.http.post<AbsenceDay[]>('/api/v1/absence-days', { employeeId, dateFrom, dateTo, note });
+  }
+  updateAbsenceDay(day: AbsenceDay, note: string | null) {
+    return this.http.put<AbsenceDay>(`/api/v1/absence-days/${day.id}`, { version: day.version, note });
+  }
+  cancelAbsenceDay(day: AbsenceDay) {
+    return this.http.post<AbsenceDay>(`/api/v1/absence-days/${day.id}/cancel`, { version: day.version });
   }
 
   users(page = 0) { return this.http.get<Page<UserSummary>>(`/api/v1/users?page=${page}`); }

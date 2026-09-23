@@ -9,14 +9,14 @@ import { problemMessage } from '../../core/problem';
 const labels: Record<string, string> = {
   EMPLOYEE_DIRECTORY: 'Pracownicy', SMS_INBOUND: 'SMS odebrane',
   AI_INTERPRETATION: 'Interpretacja AI', TIME_TRACKING: 'Czas pracy',
-  ABSENCE_EVENTS: 'Nieobecności', LEAVE_MANAGEMENT: 'Urlopy',
+  ABSENCE_EVENTS: 'Braki obecności', DETAILED_ABSENCES: 'Szczegółowe nieobecności',
   PAYROLL: 'Rozliczenia', PROJECTS: 'Projekty', PLANNING: 'Planowanie',
   TOOL_ASSIGNMENT: 'Narzędzia',
 };
 
 const icons: Record<string, string> = {
   EMPLOYEE_DIRECTORY: 'pi-users', SMS_INBOUND: 'pi-comments', AI_INTERPRETATION: 'pi-sparkles',
-  TIME_TRACKING: 'pi-clock', ABSENCE_EVENTS: 'pi-calendar', LEAVE_MANAGEMENT: 'pi-calendar-plus',
+  TIME_TRACKING: 'pi-clock', ABSENCE_EVENTS: 'pi-calendar', DETAILED_ABSENCES: 'pi-calendar-plus',
   PAYROLL: 'pi-file', PROJECTS: 'pi-folder', PLANNING: 'pi-calendar-clock', TOOL_ASSIGNMENT: 'pi-wrench',
 };
 
@@ -176,7 +176,7 @@ export class SubscriptionPage implements OnInit {
   icon(key: string): string { return icons[key] ?? 'pi-box'; }
   description(key: string): string { return key === 'PLANNING' ? 'Grafiki i harmonogramy.' :
     key === 'PROJECTS' ? 'Zarządzanie projektami i zadaniami.' :
-    key === 'LEAVE_MANAGEMENT' ? 'Wnioski urlopowe i akceptacje.' :
+    key === 'DETAILED_ABSENCES' ? 'Typy nieobecności, zliczanie i procesy akceptacji.' :
     key === 'PAYROLL' ? 'Rozliczanie czasu pracy i kosztów.' : 'Dodatkowe narzędzia administracyjne.'; }
   baseModules(plan: Subscription): SubscriptionModule[] { return plan.modules.filter(item => item.type === 'BASE'); }
   addons(plan: Subscription): SubscriptionModule[] { return plan.modules.filter(item => item.type === 'ADD_ON'); }

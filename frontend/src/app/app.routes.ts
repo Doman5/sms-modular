@@ -11,6 +11,8 @@ export const routes: Routes = [
     { path: 'employees', loadComponent: () => import('./features/employee/employees-page').then(m => m.EmployeesPage), canActivate: [tenantGuard, permissionGuard('EMPLOYEE_READ'), capabilityGuard('EMPLOYEE_DIRECTORY')] },
     { path: 'employees/new', loadComponent: () => import('./features/employee/employees-page').then(m => m.EmployeesPage), canActivate: [tenantGuard, permissionGuard('EMPLOYEE_READ'), permissionGuard('EMPLOYEE_CREATE'), capabilityGuard('EMPLOYEE_DIRECTORY')] },
     { path: 'employees/:id', loadComponent: () => import('./features/employee/employee-detail-page').then(m => m.EmployeeDetailPage), canActivate: [tenantGuard, permissionGuard('EMPLOYEE_READ'), capabilityGuard('EMPLOYEE_DIRECTORY')] },
+    { path: 'time', loadComponent: () => import('./features/time/time-page').then(m => m.TimePage), canActivate: [tenantGuard, permissionGuard('TIME_READ'), capabilityGuard('TIME_TRACKING')] },
+    { path: 'absence-days', loadComponent: () => import('./features/absence/absence-page').then(m => m.AbsencePage), canActivate: [tenantGuard, permissionGuard('ABSENCE_READ'), capabilityGuard('ABSENCE_EVENTS')] },
     { path: 'users', loadComponent: () => import('./features/identity/users-page').then(m => m.UsersPage), canActivate: [tenantGuard, permissionGuard('USER_READ')] },
     { path: 'roles', loadComponent: () => import('./features/identity/roles-page').then(m => m.RolesPage), canActivate: [tenantGuard, permissionGuard('ROLE_READ')] },
     { path: 'settings', loadComponent: () => import('./features/tenancy/settings-page').then(m => m.SettingsPage), canActivate: [tenantGuard, permissionGuard('TENANT_READ')] },
