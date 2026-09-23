@@ -117,6 +117,49 @@ public class TimeTrackingService {
 	}
 
 	@Transactional
+	public List<WorkDayResponse> createFromSms(UUID tenantId, UUID employeeId, UUID smsMessageId,
+			LocalDate date, LocalTime start, LocalTime end, AuditCallContext context) {
+		if (smsMessageId == null || date == null || start == null || end == null || start.equals(end)) {
+			throw invalid("WORK_INTERVAL_INVALID", "SMS work interval is invalid");
+		}
+		employees.lockForScheduleChange(tenantId, employeeId);
+		entitlements.require(tenantId, CAPABILITY);
+		List<LocalDate> dates = new ArrayList<>();
+		List<List<IntervalInput>> parts = new ArrayList<>();
+		if (end.isBefore(start) && !end.equals(LocalTime.MIDNIGHT)) {
+			dates.add(date);
+			parts.add(validated(List.of(new IntervalInput(start, LocalTime.MIDNIGHT))));
+			dates.add(date.plusDays(1));
+			parts.add(validated(List.of(new IntervalInput(LocalTime.MIDNIGHT, end))));
+		} else {
+			dates.add(date);
+			parts.add(validated(List.of(new IntervalInput(start, end))));
+		}
+		for (LocalDate workDate : dates) {
+			if (absences.hasAbsence(tenantId, employeeId, workDate)) {
+				throw conflict("ABSENCE_DAY_CONFLICT", "Employee is absent on this day");
+			}
+			if (days.existsByTenantIdAndEmployeeIdAndWorkDateAndStatus(tenantId, employeeId,
+					workDate, WorkStatus.ACTIVE)) {
+				throw conflict("WORK_DAY_CONFLICT", "Work day already exists");
+			}
+		}
+		Instant now = clock.instant();
+		List<WorkDay> created = new ArrayList<>();
+		for (int index = 0; index < dates.size(); index++) {
+			List<IntervalInput> input = parts.get(index);
+			WorkDay day = new WorkDay(UUID.randomUUID(), tenantId, employeeId, dates.get(index),
+					total(input), smsMessageId, now);
+			days.saveAndFlush(day);
+			intervals.saveAllAndFlush(newIntervals(tenantId, day.getId(), input, now));
+			audit.record(AuditCommand.success(tenantId, context, CAPABILITY, "WORK_DAY_CREATED",
+					"WORK_DAY", day.getId(), Map.of()));
+			created.add(day);
+		}
+		return created.stream().map(day -> response(tenantId, day)).toList();
+	}
+
+	@Transactional
 	public WorkDayResponse update(UUID tenantId, UUID employeeId, UUID dayId, UpdateWorkDayRequest request,
 			AuditCallContext context) {
 		employees.lockForScheduleChange(tenantId, employeeId);

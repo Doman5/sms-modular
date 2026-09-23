@@ -1,0 +1,170 @@
+databaseChangeLog:
+  - changeSet:
+      id: sms-001-routes-messages-runtime
+      author: sms-modular
+      changes:
+        - createTable:
+            tableName: sms_routes
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: device_id, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: recipient, type: varchar(30) }
+              - column: { name: sim_number, type: integer }
+              - column: { name: active, type: boolean, constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: sms_routes
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_sms_routes_tenant
+        - sql:
+            sql: "ALTER TABLE sms_routes ADD CONSTRAINT chk_sms_routes_address CHECK (recipient IS NOT NULL OR sim_number IS NOT NULL), ADD CONSTRAINT chk_sms_routes_sim CHECK (sim_number IS NULL OR sim_number >= 0)"
+        - sql:
+            sql: "CREATE UNIQUE INDEX uq_sms_routes_recipient ON sms_routes(device_id,recipient) WHERE active AND recipient IS NOT NULL"
+        - sql:
+            sql: "CREATE UNIQUE INDEX uq_sms_routes_sim ON sms_routes(device_id,sim_number) WHERE active AND sim_number IS NOT NULL"
+        - createTable:
+            tableName: sms_messages
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: provider, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: device_id, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: event_id, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: message_id, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: recipient, type: varchar(30) }
+              - column: { name: sim_number, type: integer }
+              - column: { name: sender_cipher, type: text }
+              - column: { name: content_cipher, type: text }
+              - column: { name: payload_hash, type: varchar(64), constraints: { nullable: false } }
+              - column: { name: received_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: employee_id, type: uuid }
+              - column: { name: status, type: varchar(24), constraints: { nullable: false } }
+              - column: { name: review_reason, type: varchar(40) }
+              - column: { name: resolution, type: varchar(20) }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, defaultValueNumeric: 0, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: sms_messages
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_sms_messages_tenant
+        - addUniqueConstraint:
+            tableName: sms_messages
+            columnNames: tenant_id,id
+            constraintName: uq_sms_messages_tenant_id
+        - addForeignKeyConstraint:
+            baseTableName: sms_messages
+            baseColumnNames: tenant_id,employee_id
+            referencedTableName: employees
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_sms_messages_employee
+        - addUniqueConstraint:
+            tableName: sms_messages
+            columnNames: provider,device_id,event_id
+            constraintName: uq_sms_messages_event
+        - createIndex:
+            tableName: sms_messages
+            indexName: ix_sms_messages_tenant_received
+            columns:
+              - column: { name: tenant_id }
+              - column: { name: received_at }
+        - createIndex:
+            tableName: sms_messages
+            indexName: ix_sms_messages_tenant_status
+            columns:
+              - column: { name: tenant_id }
+              - column: { name: status }
+        - sql:
+            sql: "ALTER TABLE sms_messages ADD CONSTRAINT chk_sms_messages_status CHECK (status IN ('PENDING','COMPLETED','REVIEW_REQUIRED','DISMISSED','ERROR','EXPIRED'))"
+        - createTable:
+            tableName: inbox_receipts
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: sms_message_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: provider, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: device_id, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: event_id, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: inbox_receipts
+            baseColumnNames: tenant_id,sms_message_id
+            referencedTableName: sms_messages
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_inbox_receipts_message
+        - addUniqueConstraint:
+            tableName: inbox_receipts
+            columnNames: provider,device_id,event_id
+            constraintName: uq_inbox_receipts_event
+        - createTable:
+            tableName: outbox_messages
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: sms_message_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: topic, type: varchar(40), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(20), constraints: { nullable: false } }
+              - column: { name: attempt, type: integer, constraints: { nullable: false } }
+              - column: { name: available_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: lease_owner, type: varchar(100) }
+              - column: { name: lease_until, type: timestamp with time zone }
+              - column: { name: error_code, type: varchar(60) }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: outbox_messages
+            baseColumnNames: tenant_id,sms_message_id
+            referencedTableName: sms_messages
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_outbox_messages_message
+        - createIndex:
+            tableName: outbox_messages
+            indexName: ix_outbox_messages_ready
+            columns:
+              - column: { name: status }
+              - column: { name: available_at }
+              - column: { name: lease_until }
+        - sql:
+            sql: "ALTER TABLE outbox_messages ADD CONSTRAINT chk_outbox_messages_status CHECK (status IN ('PENDING','PROCESSING','RETRY_WAIT','DONE','DEAD_LETTER')), ADD CONSTRAINT chk_outbox_messages_attempt CHECK (attempt >= 0)"
+  - changeSet:
+      id: sms-002-source-permissions
+      author: sms-modular
+      changes:
+        - addColumn:
+            tableName: work_days
+            columns:
+              - column: { name: sms_message_id, type: uuid }
+        - addColumn:
+            tableName: absence_days
+            columns:
+              - column: { name: sms_message_id, type: uuid }
+        - sql:
+            sql: "ALTER TABLE work_days DROP CONSTRAINT chk_work_days_source, ADD CONSTRAINT chk_work_days_source CHECK ((source = 'MANUAL' AND sms_message_id IS NULL) OR (source = 'SMS' AND sms_message_id IS NOT NULL))"
+        - sql:
+            sql: "ALTER TABLE absence_days DROP CONSTRAINT chk_absence_days_source, ADD CONSTRAINT chk_absence_days_source CHECK ((source = 'MANUAL' AND sms_message_id IS NULL) OR (source = 'SMS' AND sms_message_id IS NOT NULL))"
+        - addForeignKeyConstraint:
+            baseTableName: work_days
+            baseColumnNames: tenant_id,sms_message_id
+            referencedTableName: sms_messages
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_work_days_sms_message
+        - addForeignKeyConstraint:
+            baseTableName: absence_days
+            baseColumnNames: tenant_id,sms_message_id
+            referencedTableName: sms_messages
+            referencedColumnNames: tenant_id,id
+            constraintName: fk_absence_days_sms_message
+        - sql:
+            sql: "CREATE UNIQUE INDEX uq_work_days_sms_date ON work_days(tenant_id,sms_message_id,work_date) WHERE sms_message_id IS NOT NULL"
+        - sql:
+            sql: "CREATE UNIQUE INDEX uq_absence_days_sms_date ON absence_days(tenant_id,sms_message_id,absence_date) WHERE sms_message_id IS NOT NULL"
+        - sql:
+            sql: "UPDATE module_catalog SET status = 'AVAILABLE' WHERE key = 'SMS_INBOUND'"
+        - sql:
+            sql: "INSERT INTO role_permissions(id,tenant_id,role_id,permission_code) SELECT gen_random_uuid(),tenant_id,id,p.code FROM tenant_roles CROSS JOIN (VALUES ('SMS_READ'),('SMS_REVIEW')) AS p(code) WHERE tenant_roles.code = 'OWNER' ON CONFLICT (tenant_id,role_id,permission_code) DO NOTHING"

@@ -54,7 +54,8 @@ public class SecurityConfiguration {
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info",
 								"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
-								"/api/v1/auth/login", "/api/platform/v1/auth/login").permitAll()
+								"/api/v1/auth/login", "/api/platform/v1/auth/login",
+								"/api/integrations/v1/sms/sms-gate/inbound").permitAll()
 						.requestMatchers("/api/v1/auth/change-password", "/api/v1/me/context").hasAuthority("TENANT_USER")
 						.requestMatchers("/api/platform/v1/auth/change-password", "/api/platform/v1/me/context")
 								.hasAuthority("PLATFORM_USER")

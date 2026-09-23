@@ -26,6 +26,7 @@ import com.domanski.smsmodular.common.api.PageResponse;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.CreateEmployeeRequest;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.EmployeeResponse;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.EmployeeOption;
+import com.domanski.smsmodular.employee.dto.EmployeeDtos.SmsEmployeeMatch;
 import com.domanski.smsmodular.employee.dto.EmployeeDtos.UpdateEmployeeRequest;
 import com.domanski.smsmodular.employee.entity.Employee;
 import com.domanski.smsmodular.employee.entity.EmployeeStatus;
@@ -83,6 +84,12 @@ public class EmployeeService {
 	public EmployeeOption option(UUID tenantId, UUID employeeId) {
 		entitlements.require(tenantId, CAPABILITY);
 		return EmployeeOption.from(require(tenantId, employeeId));
+	}
+
+	@Transactional(readOnly = true)
+	public SmsEmployeeMatch findByPhone(UUID tenantId, String phone) {
+		return employees.findByTenantIdAndNormalizedPhone(tenantId, normalizePhone(phone))
+				.map(SmsEmployeeMatch::from).orElse(null);
 	}
 
 	@Transactional(readOnly = true)

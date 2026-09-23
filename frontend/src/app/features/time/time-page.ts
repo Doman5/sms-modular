@@ -28,7 +28,7 @@ import { problemMessage } from '../../core/problem';
         @else if (days().length === 0) { <p class="empty">Brak wpisów czasu pracy w wybranym miesiącu.</p> }
         @else {
           <div class="desktop-list"><table><thead><tr><th>Pracownik</th><th>Data</th><th>Przedziały</th><th>Czas</th><th>Źródło</th><th>Akcje</th></tr></thead><tbody>
-            @for (day of days(); track day.id) { <tr><td>{{ employeeName(day.employeeId) }}</td><td>{{ day.workDate | date:'dd.MM.yyyy' }}</td><td>{{ intervalsLabel(day) }}</td><td>{{ hours(day.totalMinutes) }}</td><td>Ręcznie</td><td class="actions">@if (auth.has('TIME_EDIT')) { <button type="button" (click)="openEdit(day)">Edytuj</button><button type="button" (click)="cancel(day)">Anuluj</button> }</td></tr> }
+            @for (day of days(); track day.id) { <tr><td>{{ employeeName(day.employeeId) }}</td><td>{{ day.workDate | date:'dd.MM.yyyy' }}</td><td>{{ intervalsLabel(day) }}</td><td>{{ hours(day.totalMinutes) }}</td><td>{{ day.source === 'SMS' ? 'SMS' : 'Ręcznie' }}</td><td class="actions">@if (auth.has('TIME_EDIT')) { <button type="button" (click)="openEdit(day)">Edytuj</button><button type="button" (click)="cancel(day)">Anuluj</button> }</td></tr> }
           </tbody></table></div>
           <div class="mobile-list">@for (day of days(); track day.id) { <article class="entry"><div><strong>{{ employeeName(day.employeeId) }}</strong><small>{{ day.workDate | date:'dd.MM.yyyy' }} · {{ intervalsLabel(day) }}</small></div><strong>{{ hours(day.totalMinutes) }}</strong>@if (auth.has('TIME_EDIT')) { <div class="mobile-actions"><button type="button" (click)="openEdit(day)">Edytuj</button><button type="button" (click)="cancel(day)">Anuluj</button></div> }</article> }</div>
         }

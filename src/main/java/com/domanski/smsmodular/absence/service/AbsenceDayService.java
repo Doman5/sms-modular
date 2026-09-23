@@ -116,6 +116,27 @@ public class AbsenceDayService {
 	}
 
 	@Transactional
+	public AbsenceResponse createFromSms(UUID tenantId, UUID employeeId, UUID smsMessageId,
+			LocalDate date, AuditCallContext context) {
+		if (smsMessageId == null || date == null) throw invalid("ABSENCE_RANGE_INVALID", "SMS absence is invalid");
+		employees.lockForScheduleChange(tenantId, employeeId);
+		entitlements.require(tenantId, CAPABILITY);
+		if (days.existsByTenantIdAndEmployeeIdAndAbsenceDateAndStatus(tenantId, employeeId,
+				date, AbsenceStatus.ACTIVE)) {
+			throw conflict("ABSENCE_DAY_CONFLICT", "Absence already exists on this day");
+		}
+		if (time.hasWork(tenantId, employeeId, date)) {
+			throw conflict("WORK_TIME_CONFLICT", "Work time exists on this day");
+		}
+		AbsenceDay day = new AbsenceDay(UUID.randomUUID(), tenantId, employeeId, date,
+				null, smsMessageId, clock.instant());
+		days.saveAndFlush(day);
+		audit.record(AuditCommand.success(tenantId, context, CAPABILITY, "ABSENCE_DAY_CREATED",
+				"ABSENCE_DAY", day.getId(), Map.of()));
+		return AbsenceResponse.from(day);
+	}
+
+	@Transactional
 	public AbsenceResponse update(UUID tenantId, UUID dayId, UpdateAbsenceRequest request,
 			AuditCallContext context) {
 		employees.lockForScheduleChange(tenantId, employeeId(tenantId, dayId));

@@ -34,9 +34,12 @@ formularz i wersję mobilną. Karta pracownika otwiera przefiltrowany widok.
 Wybór pracownika korzysta z ograniczonego DTO pod `/api/v1/employees/options`,
 dostępnego także dla `TIME_READ` bez `EMPLOYEE_READ`.
 
-## Granice i dalsze etapy
+## Integracja SMS i dalsze etapy
 
-Nie wyliczamy brakujących wpisów bez grafiku. Parser SMS, idempotencja źródła,
-import SMS2 i integracja Payroll powstaną wraz z odpowiednimi konsumentami.
-Nie ma jeszcze zewnętrznych providerów ani outbox. Moduł nie importuje
-repozytorium nieobecności; używa publicznego odczytu konfliktu.
+Etap 8 dodał `source=SMS` i `sms_message_id`. Serwis może atomowo zapisać
+jednoznaczny przedział otrzymany z SMS, również przez północ jako dwa wpisy.
+Ten sam SMS nie tworzy drugiego wpisu, a konflikt z istniejącym czasem lub
+nieobecnością kieruje wiadomość do review. Nie wyliczamy brakujących wpisów
+bez grafiku. Import SMS2 i integracja Payroll pozostają dalszym zakresem.
+Moduł nie importuje repozytorium nieobecności; używa publicznego odczytu
+konfliktu.

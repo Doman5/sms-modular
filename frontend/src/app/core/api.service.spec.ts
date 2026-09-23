@@ -79,6 +79,20 @@ describe('ApiService', () => {
     cancel.flush({});
   });
 
+  it('uses tenant SMS API without client-controlled tenant scope', () => {
+    api.smsMessages('2025-04-01T00:00:00Z', '2025-05-01T00:00:00Z', 'REVIEW_REQUIRED', '', true).subscribe();
+    const list = http.expectOne(value => value.url === '/api/v1/sms');
+    expect(list.request.params.has('tenantId')).toBeFalse();
+    expect(list.request.params.get('reviewOnly')).toBe('true');
+    list.flush({ content: [], totalElements: 0, totalPages: 0 });
+    api.resolveSms('sms-1', { version: 2, category: 'ABSENCE', employeeId: 'employee-1',
+      workDate: null, startTime: null, endTime: null, absenceDate: '2025-04-17' }).subscribe();
+    const resolve = http.expectOne('/api/v1/sms/sms-1/resolve');
+    expect(resolve.request.body.version).toBe(2);
+    expect(resolve.request.body.category).toBe('ABSENCE');
+    resolve.flush({ id: 'sms-1' });
+  });
+
   it('does not accept tenant scope for tenant audit reads', () => {
     api.auditLogs({ tenantId: 'foreign-tenant', module: 'IDENTITY', page: 2 }, false).subscribe();
     const request = http.expectOne(value => value.url === '/api/v1/audit-logs');

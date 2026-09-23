@@ -15,6 +15,7 @@ import com.domanski.smsmodular.employee.entity.EmployeeStatus;
 
 public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
 	Optional<Employee> findByTenantIdAndId(UUID tenantId, UUID id);
+	Optional<Employee> findByTenantIdAndNormalizedPhone(UUID tenantId, String normalizedPhone);
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select e from Employee e where e.tenantId = :tenantId and e.id = :id")
 	Optional<Employee> lockByTenantIdAndId(@Param("tenantId") UUID tenantId, @Param("id") UUID id);

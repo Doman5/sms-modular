@@ -3,7 +3,7 @@
 ## Zakres wdrożony w etapie 7
 
 Pakiet bazowy oznacza wyłącznie fakt, że pracownik był nieobecny danego dnia.
-Każda data ma osobny `AbsenceDay` z pracownikiem, źródłem `MANUAL`, opcjonalną
+Każda data ma osobny `AbsenceDay` z pracownikiem, źródłem `MANUAL` lub `SMS`, opcjonalną
 notatką, statusem `ACTIVE/CANCELLED` i wersją. Nie ma kategorii, akceptacji,
 sald ani naliczania dni urlopowych. Zakres w formularzu zapisuje wszystkie
 dni kalendarzowe atomowo; konflikt w jednym dniu odrzuca całość. Maksymalny
@@ -37,5 +37,7 @@ dostępnego także dla `ABSENCE_READ` bez `EMPLOYEE_READ`.
 Planowany dodatek `DETAILED_ABSENCES` jest właścicielem typów `VACATION`,
 `SICK_LEAVE`, `ON_DEMAND_LEAVE`, `OTHER`, ich przypisania do dni, zliczania
 oraz właściwych workflow i sald. Bazowy dzień działa niezależnie od dodatku
-i zachowuje identyfikator potrzebny do przyszłego powiązania. SMS i import
-SMS2 nie należą do etapu 7.
+i zachowuje identyfikator potrzebny do przyszłego powiązania. Etap 8 dodał
+`sms_message_id` i atomowy zapis pojedynczego, ogólnego dnia z jednoznacznego
+SMS. Wiadomości wskazujące kategorię urlopu wymagają ręcznej weryfikacji;
+import SMS2 pozostaje dalszym etapem.

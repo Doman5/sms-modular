@@ -32,6 +32,8 @@ public class WorkDay {
 	private WorkStatus status;
 	@Column(nullable = false, length = 16, updatable = false)
 	private String source;
+	@Column(name = "sms_message_id", updatable = false)
+	private UUID smsMessageId;
 	@Column(name = "total_minutes", nullable = false)
 	private int totalMinutes;
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -43,12 +45,18 @@ public class WorkDay {
 	private long version;
 
 	public WorkDay(UUID id, UUID tenantId, UUID employeeId, LocalDate workDate, int totalMinutes, Instant now) {
+		this(id, tenantId, employeeId, workDate, totalMinutes, null, now);
+	}
+
+	public WorkDay(UUID id, UUID tenantId, UUID employeeId, LocalDate workDate, int totalMinutes,
+			UUID smsMessageId, Instant now) {
 		this.id = id;
 		this.tenantId = tenantId;
 		this.employeeId = employeeId;
 		this.workDate = workDate;
 		this.status = WorkStatus.ACTIVE;
-		this.source = "MANUAL";
+		this.source = smsMessageId == null ? "MANUAL" : "SMS";
+		this.smsMessageId = smsMessageId;
 		this.totalMinutes = totalMinutes;
 		this.createdAt = now;
 		this.updatedAt = now;

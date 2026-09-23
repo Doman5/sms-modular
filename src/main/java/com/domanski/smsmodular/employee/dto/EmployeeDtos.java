@@ -44,6 +44,12 @@ public final class EmployeeDtos {
 		}
 	}
 
+	public record SmsEmployeeMatch(UUID id, EmployeeStatus status) {
+		public static SmsEmployeeMatch from(Employee employee) {
+			return new SmsEmployeeMatch(employee.getId(), employee.getStatus());
+		}
+	}
+
 	public record EmployeeResponse(UUID id, String firstName, String lastName, String phone,
 			String normalizedPhone, String email, String position, String note,
 			EmployeeStatus status, LocalDate employmentDate, Instant createdAt,

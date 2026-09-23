@@ -1,79 +1,61 @@
-# Moduł SMS Inbound
+# SMS Inbound — etap 8
 
-## Cel, zakres i analiza SMS2
+## Zakres wdrożony
 
-Bezpiecznie przyjmować SMS pracownika, rozpoznać pracownika, uruchomić parsery,
-przekazać komendę do Time/Absence albo skierować wiadomość do review. Źródła:
-`../sms2/src/main/java/com/domanski/sms/sms`, migracje `0004`, `0015`, `0016`,
-`0022` oraz Angular `pages/sms` i `core/api/sms-*`.
+Moduł odbiera zdarzenia `sms:received` z jednego urządzenia SMS-Gate. Webhook
+`POST /api/integrations/v1/sms/sms-gate/inbound` weryfikuje HMAC-SHA256 z surowej
+treści i nagłówka czasu (okno ±5 minut), następnie ustala tenant z aktywnej
+trasy po numerze odbiorcy lub awaryjnie po `deviceId + simNumber`. Payload nie
+może wybrać tenant ID. Niejednoznaczny lub sprzeczny routing jest odrzucany.
 
-Nie łączyć encji SMS z encjami innych modułów; zapisywać ich identyfikatory i
-sprawdzać dane przez metody serwisów. Moduł bazowy nie wysyła potwierdzeń ani
-odpowiedzi.
+Przyjęcie zapisuje zaszyfrowane dane SMS, deduplikację zdarzenia oraz zadanie
+outbox w jednej transakcji. Ponowne dostarczenie identycznego zdarzenia zwraca
+istniejącą wiadomość; ten sam identyfikator z inną treścią daje konflikt.
+Worker rozpoznaje pracownika po numerze telefonu wyłącznie w ustalonym
+tenancie. Regułowy parser może automatycznie utworzyć tylko jednoznaczny
+przedział pracy albo jeden dzień ogólnej nieobecności. Praca przez północ jest
+atomowo dzielona na dwa dni. Niejednoznaczny tekst, typ urlopu, brak pracownika
+i konflikt z istniejącą ewidencją trafiają do `REVIEW_REQUIRED`.
 
-## Model i przepływ
+Nie ma wysyłania SMS, interpretacji AI, importu historii ani naliczania limitu
+SMS. Dodatek szczegółowych nieobecności nie jest wywoływany: SMS zapisuje
+jedynie bazowe, nietypowane oznaczenie dnia.
 
-- `SmsMessage`: tenant, provider/source, external ID, sender/recipient, sim/route,
-  content, receivedAt, employeeId?, processing/review status, interpretation
-  summary, source, confidence, errors, version i timestamps.
-- `TenantSmsRoute`: routing dostawcy → tenant, zarządzany platformowo.
-- Idempotencja `(tenant_id, provider, external_message_id)`.
-- Webhook: verify signature/timestamp/replay → resolve route → persist message +
-  outbox → return 2xx → asynchronous processing.
-- Worker: resolve employee by normalized phone → rules → optional AI → command
-  Time/Absence → completed albo review/error.
+## API i uprawnienia
 
-## API, permissions i kontrakty
+- `GET /api/v1/sms` — zakres dat i filtry statusu, pracownika, review; `SMS_READ`.
+- `GET /api/v1/sms/{id}` — pełna treść dostępna wyłącznie z `SMS_READ`.
+- `POST /api/v1/sms/{id}/resolve` — ręczne przypisanie pracy/nieobecności albo
+  odrzucenie; `SMS_REVIEW`, kontrola wersji i aktywności pracownika.
+- `POST /api/v1/sms/{id}/reparse` — ponowne uruchomienie parsera; `SMS_REVIEW`.
+- `GET/POST /api/platform/v1/sms/routes` i
+  `POST /api/platform/v1/sms/routes/{id}/deactivate` — zarządzanie trasami przez
+  uprawnienia platformowe.
 
-- Publiczny `/api/integrations/v1/sms/{provider}/inbound`; nie przyjmuje zaufanego
-  `tenantId`.
-- `/api/v1/sms`: list/detail/reparse/resolve; permissions `SMS_READ`,
-  `SMS_REVIEW`, capability `SMS_INBOUND`.
-- Manual resolve wywołuje publiczną komendę właściciela i jest idempotentne.
-- Wywołuje `EmployeeService`, `TimeTrackingService`, `AbsenceEventService`,
-  `AiInterpretationService` i `UsageService`; stan wiadomości oraz zadania
-  zapisuje przez własne repozytorium i Integration Runtime.
-- Kody: `SMS_ROUTE_UNKNOWN`, `SMS_SIGNATURE_INVALID`, `SMS_EMPLOYEE_UNKNOWN`,
-  `SMS_REVIEW_REQUIRED`, `SMS_ALREADY_RESOLVED`.
+Operacje tenantowe wymagają capability `SMS_INBOUND`. Trasy są unikalne dla
+aktywnego numeru odbiorcy lub pary urządzenie/SIM. UI `/sms` oferuje listę,
+filtry, panel szczegółów i ręczne rozstrzygnięcie; `/platform/sms/routes`
+pozwala wyszukać tenant i skonfigurować trasę. Oba widoki działają w układzie
+desktopowym i mobilnym.
 
-## Dane, bezpieczeństwo i obserwowalność
+## Dane i operacje
 
-- `sms_messages` z indeksem tenant/provider/external ID oraz route mapping jako
-  konfiguracja platformy. Każde zapytanie danych klienta przyjmuje jawne
-  `tenantId`; izolację wymusza kod zapytań i ograniczenia bazy danych.
-- Treść może zawierać dane osobowe: szyfrowanie at rest na poziomie platformy,
-  retencja, brak w logach i ograniczony permission do szczegółów.
-- Metryki: accepted/duplicate/review/completed/error, lag, parser outcome, unknown
-  route/employee. Alertować wzrost error i kolejki.
-- Usage jest naliczane idempotentnie po trwałym przyjęciu; przekroczenie nie
-  powoduje utraty webhooka.
+`sms_messages` przechowuje tenant ID, identyfikatory providera, stan, wersję,
+powód review i zaszyfrowane AES-GCM treść oraz numer nadawcy. Klucz danych
+jest podawany przez `SMS_DATA_KEY_BASE64`; nie wolno go zmieniać bez
+procedury re-encryption. Po 90 dniach zadanie retencyjne usuwa treść i nadawcę,
+pozostawiając metadane i ślad audytowy. Dane SMS nie są logowane.
 
-## Frontend
+Konfiguracja: `SMS_INBOUND_ENABLED`, `SMS_WORKER_ENABLED`, `SMS_GATE_DEVICE_ID`,
+`SMS_GATE_WEBHOOK_SIGNING_KEY`, `SMS_DATA_KEY_BASE64`. Bez pełnej konfiguracji webhook
+nie przyjmuje wiadomości. Worker i webhook powinny być włączone dopiero po
+utworzeniu trasy i nadaniu klientowi capability. Procedura obsługi awarii jest
+w [runbooku Integration Runtime](../platform/integration-runtime-runbook.md).
 
-- `/sms` lista z filtrami statusu/reason/date; `/sms/:id` szczegóły,
-  interpretacja, historia prób, reparse i manual resolve.
-- Nie pokazywać danych innego pracownika przy zmianie route; maskować telefon na
-  liście zgodnie z permission.
+## Weryfikacja i dalszy etap
 
-## Etapy
-
-1. Encja wiadomości, routing, migracje, indeksy i retencja.
-2. Webhook security, idempotencja i transakcyjny outbox.
-3. Worker, employee resolution i parsery regułowe przeniesione po testach golden.
-4. Wywołania serwisów Time/Absence oraz stanowa maszyna przetwarzania.
-5. Review/reparse/resolve API i Angular.
-6. Podłączenie AI, usage, metryk, alertów i runbooka.
-
-## Migracja i testy
-
-Importować historyczne SMS jako zakończone/review bez enqueue; zachować external
-ID i source, a relacje zastąpić ID/referencją. Golden tests parserów wykorzystają
-zanonimizowane przypadki SMS2. Testować podpis, replay, duplikat, dwa tenanty z
-tym samym telefonem, unknown employee, crash/retry, concurrent resolve, limit AI
-i gwarancję braku outbound.
-
-## Zależności i ukończenie
-
-Wymaga Employee, Time, Absence, Integration Runtime, Usage i Audit. AI jest
-opcjonalnym technicznym krokiem mimo bazowego capability. Gotowe po pełnym
-przepływie webhook → komenda/review bez bezpośredniego zapisu obcej tabeli.
+Testy PostgreSQL obejmują migrację, podpis, duplikat, routing, izolację tenantów,
+automatyczny zapis i review konfliktu. Parser ma testy jednostkowe. UI i API
+mają testy frontendu. Następny etap może dodać AI jako opcjonalną pomoc w
+interpretacji wiadomości kierowanych do review; wynik nie powinien omijać
+kontroli konfliktów ani tenant ID.

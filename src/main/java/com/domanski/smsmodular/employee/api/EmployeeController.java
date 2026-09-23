@@ -52,13 +52,13 @@ public class EmployeeController {
 	}
 
 	@GetMapping("/options")
-	@PreAuthorize("hasAnyAuthority('EMPLOYEE_READ','TIME_READ','TIME_EDIT','ABSENCE_READ','ABSENCE_EDIT')")
+	@PreAuthorize("hasAnyAuthority('EMPLOYEE_READ','TIME_READ','TIME_EDIT','ABSENCE_READ','ABSENCE_EDIT','SMS_READ','SMS_REVIEW')")
 	public PageResponse<EmployeeOption> options(@RequestParam(required = false) String search, Pageable pageable) {
 		return employees.options(current.tenantId(), search, pageable);
 	}
 
 	@GetMapping("/options/{id}")
-	@PreAuthorize("hasAnyAuthority('EMPLOYEE_READ','TIME_READ','TIME_EDIT','ABSENCE_READ','ABSENCE_EDIT')")
+	@PreAuthorize("hasAnyAuthority('EMPLOYEE_READ','TIME_READ','TIME_EDIT','ABSENCE_READ','ABSENCE_EDIT','SMS_READ','SMS_REVIEW')")
 	public EmployeeOption option(@PathVariable UUID id) {
 		return employees.option(current.tenantId(), id);
 	}

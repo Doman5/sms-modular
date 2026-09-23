@@ -62,3 +62,9 @@ app:
     jwt-secret-base64: ${AUTH_JWT_SECRET_BASE64:JdoYHPXNJn1/nAlnASdKZY5urdaSN9K1+i+/mc7tqQ4=}
     bootstrap-platform-email: ${BOOTSTRAP_PLATFORM_EMAIL:admin@admin.pl}
     bootstrap-platform-password: ${BOOTSTRAP_PLATFORM_PASSWORD:admin123admin123}
+  sms:
+    enabled: ${SMS_INBOUND_ENABLED:false}
+    worker-enabled: ${SMS_WORKER_ENABLED:true}
+    device-id: ${SMS_GATE_DEVICE_ID:}
+    signing-key: ${SMS_GATE_WEBHOOK_SIGNING_KEY:}
+    data-key-base64: ${SMS_DATA_KEY_BASE64:}

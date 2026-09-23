@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/employee/db.changelog-employee.yaml
   - include:
       file: db/changelog/workforce/db.changelog-workforce.yaml
+  - include:
+      file: db/changelog/sms/db.changelog-sms.yaml

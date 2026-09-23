@@ -2,7 +2,8 @@
 
 SMS Modular jest modularnym monolitem SaaS dla wielu tenantów. Repozytorium ma
 podstawową warstwę Foundation, Tenancy, Identity & Access, Audit, Entitlements,
-Employee Directory, Time Tracking i Braki obecności. Dostęp do
+Employee Directory, Time Tracking, Braki obecności, Integration Runtime i
+SMS Inbound. Dostęp do
 endpointów biznesowych wymaga uwierzytelnienia JWT i właściwych uprawnień.
 
 ## Wymagania
@@ -67,6 +68,11 @@ Po uruchomieniu frontend jest dostępny pod `http://localhost:4200`, backend pod
 | `AUTH_JWT_SECRET_BASE64` | brak | sekret HS256 zakodowany Base64, minimum 32 losowe bajty; zachować ten sam po restarcie |
 | `BOOTSTRAP_PLATFORM_EMAIL` | brak | e-mail pierwszego administratora platformy |
 | `BOOTSTRAP_PLATFORM_PASSWORD` | brak | hasło pierwszego administratora, wymagane tylko przy pustej tabeli platform accounts |
+| `SMS_INBOUND_ENABLED` | `false` | włącza webhook SMS-Gate |
+| `SMS_WORKER_ENABLED` | `true` | włącza przetwarzanie kolejki SMS po aktywacji integracji |
+| `SMS_GATE_DEVICE_ID` | brak | identyfikator jednego obsługiwanego urządzenia |
+| `SMS_GATE_WEBHOOK_SIGNING_KEY` | brak | sekret podpisu webhooka SMS-Gate |
+| `SMS_DATA_KEY_BASE64` | brak | stały klucz AES-256, 32 bajty zakodowane Base64 |
 
 Lokalny Compose rozdziela rolę aplikacji od roli wykonującej migracje. Produkcja
 musi dostarczyć role i sekrety przez zarządzaną konfigurację wdrożeniową.
@@ -91,6 +97,12 @@ dodatkami z widoku tenanta. Czas pracy (`/time`) i Braki obecności
 powstaną w dodatku Szczegółowe nieobecności. Widoki logowania,
 użytkowników, audytu, ustawień i pakietu mają układy desktop/mobile oparte na
 [propozycjach UI](docs/ui-proposals/README.md).
+
+Przychodzące SMS są dostępne pod `/sms` po nadaniu klientowi `SMS_INBOUND`.
+Operator platformy konfiguruje trasy pod `/platform/sms/routes`. Automatyczny
+zapis obejmuje tylko jednoznaczny czas pracy i ogólną nieobecność; pozostałe
+wiadomości wymagają weryfikacji. Integracja domyślnie jest wyłączona. Szczegóły
+wdrożenia i retencji są w [opisie modułu](docs/implementation/base/sms-inbound.md).
 
 ## Architektura i kolejność prac
 

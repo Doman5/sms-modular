@@ -99,7 +99,7 @@ export interface WorkDay {
   employeeId: string;
   workDate: string;
   status: 'ACTIVE' | 'CANCELLED';
-  source: 'MANUAL';
+  source: 'MANUAL' | 'SMS';
   totalMinutes: number;
   intervals: WorkInterval[];
   createdAt: string;
@@ -113,7 +113,7 @@ export interface AbsenceDay {
   id: string;
   employeeId: string;
   absenceDate: string;
-  source: 'MANUAL';
+  source: 'MANUAL' | 'SMS';
   note: string | null;
   status: 'ACTIVE' | 'CANCELLED';
   createdAt: string;
@@ -122,6 +122,38 @@ export interface AbsenceDay {
 }
 
 export interface AbsenceCalendarDay { date: string; count: number; }
+
+export interface SmsMessage {
+  id: string;
+  employeeId: string | null;
+  sender: string | null;
+  content: string | null;
+  recipient: string | null;
+  receivedAt: string;
+  status: 'PENDING' | 'COMPLETED' | 'REVIEW_REQUIRED' | 'DISMISSED' | 'ERROR' | 'EXPIRED';
+  reviewReason: string | null;
+  resolution: string | null;
+  version: number;
+}
+
+export interface SmsResolveInput {
+  version: number;
+  category: 'WORK_TIME' | 'ABSENCE' | 'DISMISS';
+  employeeId: string | null;
+  workDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  absenceDate: string | null;
+}
+
+export interface SmsRoute {
+  id: string;
+  tenantId: string;
+  deviceId: string;
+  recipient: string | null;
+  simNumber: number | null;
+  active: boolean;
+}
 
 export interface SubscriptionModule {
   key: string;
@@ -214,6 +246,27 @@ export class ApiService {
   }
   cancelAbsenceDay(day: AbsenceDay) {
     return this.http.post<AbsenceDay>(`/api/v1/absence-days/${day.id}/cancel`, { version: day.version });
+  }
+
+  smsMessages(from: string, to: string, status = '', employeeId = '', reviewOnly = false, page = 0) {
+    let params = new HttpParams().set('from', from).set('to', to).set('reviewOnly', reviewOnly).set('page', page);
+    if (status) params = params.set('status', status);
+    if (employeeId) params = params.set('employeeId', employeeId);
+    return this.http.get<Page<SmsMessage>>('/api/v1/sms', { params });
+  }
+  smsMessage(id: string) { return this.http.get<SmsMessage>(`/api/v1/sms/${id}`); }
+  resolveSms(id: string, input: SmsResolveInput) {
+    return this.http.post<SmsMessage>(`/api/v1/sms/${id}/resolve`, input);
+  }
+  reparseSms(id: string, version: number) {
+    return this.http.post<SmsMessage>(`/api/v1/sms/${id}/reparse`, { version });
+  }
+  smsRoutes() { return this.http.get<SmsRoute[]>('/api/platform/v1/sms/routes'); }
+  createSmsRoute(tenantId: string, recipient: string | null, simNumber: number | null) {
+    return this.http.post<SmsRoute>('/api/platform/v1/sms/routes', { tenantId, recipient, simNumber });
+  }
+  deactivateSmsRoute(id: string) {
+    return this.http.post<SmsRoute>(`/api/platform/v1/sms/routes/${id}/deactivate`, {});
   }
 
   users(page = 0) { return this.http.get<Page<UserSummary>>(`/api/v1/users?page=${page}`); }

@@ -3,8 +3,9 @@
 Dokumenty opisują zachowania legacy, wymagania produktu i makiety. Implementacja
 powstaje etapami jako prosty modularny monolit warstwowy.
 
-Etapy 0–7 są wdrożone. Etap 7 obejmuje ręczną ewidencję czasu pracy i bazowe
-oznaczanie dni nieobecności. Kolejny etap to Integration Runtime i SMS Inbound.
+Etapy 0–8 są wdrożone. Etap 8 obejmuje podpisany inbound SMS-Gate, trwałą kolejkę,
+regułowe rozpoznawanie czasu pracy i ogólnej nieobecności oraz ręczną weryfikację.
+Kolejnym etapem jest opcjonalna interpretacja AI.
 
 ## Zasady realizacji
 

@@ -29,7 +29,7 @@ import { problemMessage } from '../../core/problem';
           <div class="day-list"><h2>{{ selectedDate() ? 'Wybrany dzień' : 'Nieobecności w miesiącu' }}</h2>
             @if (loading()) { <p role="status">Ładowanie nieobecności…</p> }
             @else if (days().length === 0) { <p class="empty">Brak oznaczonych nieobecności.</p> }
-            @else { @for (day of days(); track day.id) { <article class="absence-row"><span class="avatar">{{ initials(day.employeeId) }}</span><div><strong>{{ employeeName(day.employeeId) }}</strong><small>{{ day.absenceDate | date:'dd.MM.yyyy' }} · Ręcznie</small>@if (day.note) { <small>{{ day.note }}</small> }</div>
+            @else { @for (day of days(); track day.id) { <article class="absence-row"><span class="avatar">{{ initials(day.employeeId) }}</span><div><strong>{{ employeeName(day.employeeId) }}</strong><small>{{ day.absenceDate | date:'dd.MM.yyyy' }} · {{ day.source === 'SMS' ? 'SMS' : 'Ręcznie' }}</small>@if (day.note) { <small>{{ day.note }}</small> }</div>
               @if (auth.has('ABSENCE_EDIT')) { <div class="row-actions"><button type="button" (click)="openEdit(day)">Edytuj</button><button type="button" (click)="cancel(day)">Anuluj</button></div> }
             </article> } }
             <div class="pagination"><span>Strona {{ page() + 1 }} z {{ totalPages() || 1 }}</span><button type="button" [disabled]="page() === 0 || loading()" (click)="setPage(page() - 1)">Poprzednia</button><button type="button" [disabled]="page() + 1 >= totalPages() || loading()" (click)="setPage(page() + 1)">Następna</button></div>

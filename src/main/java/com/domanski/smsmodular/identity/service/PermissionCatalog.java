@@ -20,6 +20,8 @@ public final class PermissionCatalog {
 	public static final String TIME_EDIT = "TIME_EDIT";
 	public static final String ABSENCE_READ = "ABSENCE_READ";
 	public static final String ABSENCE_EDIT = "ABSENCE_EDIT";
+	public static final String SMS_READ = "SMS_READ";
+	public static final String SMS_REVIEW = "SMS_REVIEW";
 	public static final String PLATFORM_TENANT_READ = "PLATFORM_TENANT_READ";
 	public static final String PLATFORM_TENANT_MANAGE = "PLATFORM_TENANT_MANAGE";
 	public static final String PLATFORM_AUDIT_READ = "PLATFORM_AUDIT_READ";
@@ -29,7 +31,7 @@ public final class PermissionCatalog {
 	public static final Set<String> TENANT_PERMISSIONS = Set.of(TENANT_READ, TENANT_EDIT, USER_READ,
 			USER_MANAGE, ROLE_READ, ROLE_MANAGE, AUDIT_READ, SUBSCRIPTION_READ,
 			EMPLOYEE_READ, EMPLOYEE_CREATE, EMPLOYEE_EDIT, EMPLOYEE_STATUS_CHANGE,
-			TIME_READ, TIME_EDIT, ABSENCE_READ, ABSENCE_EDIT);
+			TIME_READ, TIME_EDIT, ABSENCE_READ, ABSENCE_EDIT, SMS_READ, SMS_REVIEW);
 
 	private PermissionCatalog() {
 	}

@@ -29,6 +29,8 @@ public class AbsenceDay {
 	private LocalDate absenceDate;
 	@Column(nullable = false, updatable = false, length = 16)
 	private String source;
+	@Column(name = "sms_message_id", updatable = false)
+	private UUID smsMessageId;
 	@Column(length = 2000)
 	private String note;
 	@Enumerated(EnumType.STRING)
@@ -43,11 +45,17 @@ public class AbsenceDay {
 	private long version;
 
 	public AbsenceDay(UUID id, UUID tenantId, UUID employeeId, LocalDate date, String note, Instant now) {
+		this(id, tenantId, employeeId, date, note, null, now);
+	}
+
+	public AbsenceDay(UUID id, UUID tenantId, UUID employeeId, LocalDate date, String note,
+			UUID smsMessageId, Instant now) {
 		this.id = id;
 		this.tenantId = tenantId;
 		this.employeeId = employeeId;
 		this.absenceDate = date;
-		this.source = "MANUAL";
+		this.source = smsMessageId == null ? "MANUAL" : "SMS";
+		this.smsMessageId = smsMessageId;
 		this.note = note;
 		this.status = AbsenceStatus.ACTIVE;
 		this.createdAt = now;

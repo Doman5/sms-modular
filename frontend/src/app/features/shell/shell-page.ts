@@ -13,11 +13,13 @@ import { AuthService } from '../../core/auth.service';
           @if (auth.isPlatform()) {
             <a routerLink="/platform/tenants" routerLinkActive="active"><i class="pi pi-building" aria-hidden="true"></i>Tenanci</a>
             @if (auth.has('PLATFORM_AUDIT_READ')) { <a routerLink="/platform/audit" routerLinkActive="active"><i class="pi pi-file" aria-hidden="true"></i>Dziennik audytu</a> }
+            @if (auth.has('PLATFORM_TENANT_READ')) { <a routerLink="/platform/sms/routes" routerLinkActive="active"><i class="pi pi-mobile" aria-hidden="true"></i>Trasy SMS</a> }
           } @else {
             <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><i class="pi pi-home" aria-hidden="true"></i>Pulpit</a>
             @if (auth.has('EMPLOYEE_READ') && auth.hasCapability('EMPLOYEE_DIRECTORY')) { <a routerLink="/employees" routerLinkActive="active"><i class="pi pi-users" aria-hidden="true"></i>Pracownicy</a> }
             @if (auth.has('TIME_READ') && auth.hasCapability('TIME_TRACKING')) { <a routerLink="/time" routerLinkActive="active"><i class="pi pi-clock" aria-hidden="true"></i>Czas pracy</a> }
             @if (auth.has('ABSENCE_READ') && auth.hasCapability('ABSENCE_EVENTS')) { <a routerLink="/absence-days" routerLinkActive="active"><i class="pi pi-calendar-times" aria-hidden="true"></i>Braki obecności</a> }
+            @if (auth.has('SMS_READ') && auth.hasCapability('SMS_INBOUND')) { <a routerLink="/sms" routerLinkActive="active"><i class="pi pi-comments" aria-hidden="true"></i>SMS</a> }
             @if (auth.has('USER_READ')) { <a routerLink="/users" routerLinkActive="active"><i class="pi pi-users" aria-hidden="true"></i>Użytkownicy</a> }
             @if (auth.has('ROLE_READ')) { <a routerLink="/roles" routerLinkActive="active"><i class="pi pi-shield" aria-hidden="true"></i>Role i uprawnienia</a> }
             @if (auth.has('TENANT_READ')) { <a routerLink="/settings" routerLinkActive="active"><i class="pi pi-cog" aria-hidden="true"></i>Ustawienia firmy</a> }
@@ -39,10 +41,12 @@ import { AuthService } from '../../core/auth.service';
         @if (auth.isPlatform()) {
           <a routerLink="/platform/tenants" (click)="moreOpen.set(false)"><i class="pi pi-building" aria-hidden="true"></i>Tenanci</a>
           @if (auth.has('PLATFORM_AUDIT_READ')) { <a routerLink="/platform/audit" (click)="moreOpen.set(false)"><i class="pi pi-file" aria-hidden="true"></i>Audyt</a> }
+          @if (auth.has('PLATFORM_TENANT_READ')) { <a routerLink="/platform/sms/routes" (click)="moreOpen.set(false)"><i class="pi pi-mobile" aria-hidden="true"></i>Trasy SMS</a> }
         } @else {
           @if (auth.has('EMPLOYEE_READ') && auth.hasCapability('EMPLOYEE_DIRECTORY')) { <a routerLink="/employees" (click)="moreOpen.set(false)"><i class="pi pi-users" aria-hidden="true"></i>Pracownicy</a> }
           @if (auth.has('USER_READ')) { <a routerLink="/users" (click)="moreOpen.set(false)"><i class="pi pi-users" aria-hidden="true"></i>Użytkownicy</a> }
           @if (auth.has('SUBSCRIPTION_READ')) { <a routerLink="/subscription" (click)="moreOpen.set(false)"><i class="pi pi-box" aria-hidden="true"></i>Pakiet</a> }
+          @if (auth.has('SMS_READ') && auth.hasCapability('SMS_INBOUND')) { <a routerLink="/sms" (click)="moreOpen.set(false)"><i class="pi pi-comments" aria-hidden="true"></i>SMS</a> }
         }
         <button type="button" (click)="moreOpen.set(!moreOpen())" [attr.aria-expanded]="moreOpen()"><i class="pi pi-ellipsis-h" aria-hidden="true"></i>Więcej</button>
       </nav>
