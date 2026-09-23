@@ -33,8 +33,9 @@ public class TenantAuditController {
 			@RequestParam(required = false) Instant to, @RequestParam(required = false) UUID actorId,
 			@RequestParam(required = false) String module, @RequestParam(required = false) String action,
 			@RequestParam(required = false) AuditResult result, @RequestParam(required = false) UUID targetId,
+			@RequestParam(required = false) String search,
 			Pageable pageable) {
 		return audit.listTenant(current.tenantId(),
-				new AuditFilter(from, to, actorId, module, action, result, targetId), pageable);
+				new AuditFilter(from, to, actorId, module, action, result, targetId, search), pageable);
 	}
 }

@@ -1,54 +1,33 @@
 # Moduł Usage
 
-## Cel i zakres
+## Stan wdrożenia
 
-Idempotentnie mierzyć użycie limitowanych zasobów i udostępniać decyzję, czy
-operacja mieści się w efektywnym limicie. Moduł jest greenfield. Nie nalicza cen
-i nie jest ledgerem finansowym.
+Pierwsza metryka to `ACTIVE_USERS`. Zużycie jest liczone z kont o statusie
+`ACTIVE` danego tenanta; nie ma oddzielnego licznika ani synchronizacji. Wynik
+zawiera `used`, efektywny tryb i wartość limitu oraz `remaining` (zero także
+po obniżeniu limitu poniżej bieżącego zużycia). Jest dostępny w
+`/api/v1/me/context` i w widokach subskrypcji.
 
-Metryki pierwszej wersji: aktywni użytkownicy, aktywni pracownicy, SMS inbound,
-wywołania/budżet AI oraz projektowe SMS outbound.
+Tworzenie użytkownika i przejście `DISABLED -> ACTIVE` sprawdzają limit przed
+zapisem. Operacje kont są serializowane blokadą tenanta, dlatego dwa równoległe
+żądania nie przekroczą dostępnego miejsca. Wyłączenie konta zwalnia miejsce;
+obniżenie limitu nie usuwa istniejących kont. Przekroczenie zwraca
+`403 LIMIT_EXCEEDED`.
 
-## Model i kontrakty
+## Dalsze metryki
 
-- `UsageMetric` jest stabilnym enumem/katalogiem z jednostką i typem okresu.
-- `UsageCounter(tenant, metric, periodStart, periodEnd, consumed, version)` ma
-  unikalność tenant/metric/period.
-- `UsageReceipt(operationId, tenant, metric, amount)` zapobiega podwójnemu
-  naliczeniu retry.
-- `UsageMeter.check`, `consume` i `snapshot`; consume jest atomowe i zwraca
-  limit, zużycie, pozostałą wartość oraz wynik.
-- Limit pochodzi z Entitlements; brak zdefiniowanego limitu oznacza politykę
-  zapisaną jawnie w planie, nie domysł modułu.
+Liczniki okresowe, potwierdzenia idempotencji i korekty administracyjne nie
+powstały teraz. Będą projektowane przy konkretnych konsumentach:
 
-## Zachowanie przekroczeń
+1. aktywni pracownicy — Employee Directory;
+2. inbound SMS — Integration Runtime i SMS Inbound;
+3. wywołania/budżet AI — AI Interpretation;
+4. outbound SMS projektów — Projects/SMS Outbound.
 
-- SMS inbound zostaje trwale przyjęty i oznaczony do administracyjnej obsługi;
-  webhook nie traci danych i nie wpada w retry loop.
-- Brak budżetu AI powoduje parser regułowy + review.
-- Tworzenie użytkownika/pracownika ponad limit jest odrzucane przed zapisem.
-- Project outbound nie jest wysyłany ponad limit i zachowuje draft/status błędu.
+Przy metrykach zdarzeniowych trzeba zapewnić atomowe naliczanie,
+idempotentność retry, okres rozliczeniowy i odrębną politykę po przekroczeniu.
+Nie należy używać licznika aktywnych użytkowników jako ogólnego wzorca dla
+każdej metryki: jego źródłem prawdy są konta, a nie zdarzenia.
 
-## API i frontend
-
-- Dane usage są częścią `/api/v1/me/context` i `GET /api/v1/subscription`.
-- Platforma ma tenant-scoped podgląd i audytowaną korektę, bez ręcznej edycji
-  liczników SQL.
-- Angular pokazuje zużycie, próg i kod `LIMIT_EXCEEDED`; nie oblicza limitu sam.
-
-## Etapy
-
-1. Katalog metryk, okresy, counters, receipts, indeksy i ograniczenia unikalności.
-2. Atomowy meter z ochroną przed wyścigiem i retry.
-3. Integracja z Entitlements i kontekstem sesji.
-4. Integracje kolejno: users, employees, inbound SMS, AI, outbound SMS.
-5. Agregacja, metryki, alerty i administracyjna korekta.
-
-## Testy, migracja i zależności
-
-Startowe liczniki migracji wyliczyć z bieżącego okresu SMS2, nie z całej historii.
-Testować równoległe consume, duplikat operation ID, granicę okresu w timezone,
-zmianę limitu, przekroczenia specyficzne dla zasobu i izolację tenanta.
-
-Wymaga Entitlements, Integration Runtime i Audit. Odblokowuje pełne wdrożenie
-Employee, SMS, AI i Projects.
+Usage zależy od Entitlements i Identity. Testy PostgreSQL sprawdzają limit,
+zwalnianie miejsca, re-aktywację oraz wyścig równoległych tworzeń.

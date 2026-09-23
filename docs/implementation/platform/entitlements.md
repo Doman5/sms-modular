@@ -1,54 +1,51 @@
 # Moduł Entitlements
 
-## Cel i zakres
+## Stan wdrożenia
 
-Zarządzać wersjonowanym planem bazowym, dodatkami i efektywnymi capabilities.
-Moduł jest greenfield; SMS2 nie ma planów ani feature flags. Nie realizuje
-płatności, faktur ani checkoutu.
+Moduł jest wdrożony dla jednego planu `BASE` w wersji 1. Nowy tenant otrzymuje
+subskrypcję w transakcji tworzenia firmy. Migracja zakłada ją również dla
+istniejących tenantów. Plan jest niemodyfikowalną wersją z limitem
+`ACTIVE_USERS = UNLIMITED`.
 
-## Model i reguły
+Katalog zawiera bazowe `EMPLOYEE_DIRECTORY`, `SMS_INBOUND`,
+`AI_INTERPRETATION`, `TIME_TRACKING`, `ABSENCE_EVENTS` oraz dodatki
+`LEAVE_MANAGEMENT`, `PAYROLL`, `PROJECTS`, `PLANNING`, `TOOL_ASSIGNMENT`.
+Wszystkie mają obecnie status `PLANNED`: są widoczne, ale nie dają capability
+i nie można ich aktywować, dopóki ich funkcje nie zostaną wdrożone.
 
-- `ModuleCatalog(key, type, status)`; typ `BASE` albo `ADD_ON`.
-- `Plan` i niezmienna `PlanVersion`; `PlanModule` wiąże capability i limit.
-- `TenantSubscription` ma tenant, wersję planu, status i okres obowiązywania.
-- `TenantAddon` ma capability, źródło aktywacji, status oraz `startsAt/endsAt`.
-- `TenantLimitOverride` jest czasowy i audytowany.
-- Bazowe: `EMPLOYEE_DIRECTORY`, `SMS_INBOUND`, `AI_INTERPRETATION`,
-  `TIME_TRACKING`, `ABSENCE_EVENTS`; dodatki zgodne z architekturą.
-- `PLANNING` wymaga `PROJECTS`; dezaktywacja Projects jest blokowana, jeśli
-  Planning pozostaje aktywne. Brak cichej kaskady.
-- Dezaktywacja blokuje nowe operacje, ale nie usuwa danych.
+## Reguły
 
-## Kontrakty i API
+- Efektywny snapshot uwzględnia status firmy, subskrypcji, katalogu oraz
+  przedziały `startsAt`/`endsAt`. Brak capability zwraca
+  `403 CAPABILITY_NOT_ENABLED`.
+- Operator platformy może ustawić dodatek na okres bez końca lub z datą końca.
+  `PLANNING` wymaga `PROJECTS` aktywnego przez cały ten okres. Wyłączenie
+  Projects z aktywnym Planning jest blokowane, bez cichej kaskady.
+- Operator może ustawić limit aktywnych użytkowników jako `FINITE`,
+  `UNLIMITED` albo `INHERIT`. Override może wygasnąć; obniżenie limitu nie
+  usuwa istniejących kont, ale blokuje nowe i ponowną aktywację ponad limit.
+- Komendy są audytowane. Stan po zmianie jest wyliczany z bazy bez cache.
 
-- `EntitlementChecker.require(CapabilityKey)` i odczyt
-  `EntitlementSnapshot(capabilities, limits, validUntil)`.
-- Tenant: `GET /api/v1/subscription`.
-- Platforma: odczyt i audytowane komendy zmiany planu/dodatku w
-  `/api/platform/v1/tenants/{tenantId}/subscription`.
-- Brak capability zwraca `403 CAPABILITY_NOT_ENABLED`, odróżniony od permission.
+## API i UI
 
-## Frontend, cache i obserwowalność
+- Tenant: `GET /api/v1/subscription` z `SUBSCRIPTION_READ`.
+- Platforma: `GET /api/platform/v1/tenants/{tenantId}/subscription` z
+  `PLATFORM_SUBSCRIPTION_READ`.
+- Platforma: `PUT .../addons/{key}` i `PUT .../limits/ACTIVE_USERS` z
+  `PLATFORM_SUBSCRIPTION_MANAGE`.
+- Odpowiedź zawiera moduły, capabilities, zużycie aktywnych użytkowników,
+  efektywny limit, ustawiony override oraz najbliższą granicę ważności.
+- `/me/context` udostępnia efektywne capabilities i usage. Angular ma
+  osobne widoki tenantowy i platformowy, responsywne według propozycji UI 19.
 
-- Shell korzysta ze snapshotu `/me/context`; menu i route guards używają
-  capability keys, nie flag rozsianych po komponentach.
-- Cache ma krótki TTL i unieważnienie po komendzie. Backend sprawdza snapshot
-  niezależnie od stanu frontendu.
-- Metryki: odmowy per capability, aktywacje, wygasanie i błędy zależności.
+## Poza zakresem i następne kroki
 
-## Etapy
+Nie ma checkoutu, cen, faktur, zmiany planu ani automatycznego włączania
+zaplanowanych modułów. Kolejne moduły należy oznaczać `AVAILABLE` dopiero po
+wdrożeniu ich backendu, uprawnień, danych i UI. Wtedy ich przypadki użycia
+muszą wymagać odpowiedniej capability po stronie serwera. Bezpieczeństwo nie
+opiera się na ukryciu przycisku w frontendzie.
 
-1. Katalog, plan/version, subskrypcja i dodatki z seedem bazowych keys.
-2. Resolver snapshotu i walidacja statusów/czasu/zależności.
-3. `require`, integracja z metodami domenowymi i kody Problem Details.
-4. Platformowe API komend, audyt i cache invalidation.
-5. `/subscription`, integracja `/me/context` i Angular guards.
-
-## Testy, migracja i zależności
-
-Dla importowanego tenanta utworzyć bazę i dodatki odpowiadające przenoszonym
-danym. Testować granice czasu, zmianę plan version, cache, suspend, brak
-permission mimo dodatku, Planning bez Projects oraz zachowanie danych po wyłączeniu.
-
-Wymaga Tenancy, Identity i Audit. Udostępnia kontrakt wszystkim modułom oraz Usage.
-
+Moduł zależy od Tenancy, Identity i Audit. Testy PostgreSQL obejmują izolację,
+plan startowy, uprawnienia, zależności dodatków, limit oraz równoległe tworzenie
+użytkowników.

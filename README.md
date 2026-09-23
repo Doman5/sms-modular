@@ -1,7 +1,8 @@
 # SMS Modular
 
 SMS Modular jest modularnym monolitem SaaS dla wielu tenantów. Repozytorium ma
-podstawową warstwę Foundation, Tenancy, Identity & Access oraz Audit. Dostęp do
+podstawową warstwę Foundation, Tenancy, Identity & Access, Audit, Entitlements
+oraz limit aktywnych użytkowników. Dostęp do
 endpointów biznesowych wymaga uwierzytelnienia JWT i właściwych uprawnień.
 
 ## Wymagania
@@ -82,6 +83,13 @@ Dziennik audytu jest dostępny w panelu firmy pod `/audit` dla osób z
 `PLATFORM_AUDIT_READ`. API odczytu to odpowiednio `GET /api/v1/audit-logs`
 oraz `GET /api/platform/v1/audit-logs`; platforma musi podać `tenantId` albo
 `scope=global`. Domyślnie zwracane są zdarzenia z ostatnich 30 dni.
+
+Pakiet firmy i wykorzystanie aktywnych kont są dostępne pod `/subscription`
+oraz `GET /api/v1/subscription`. Operator platformy zarządza limitem kont i
+dodatkami z widoku tenanta. Moduły biznesowe w katalogu mają obecnie status
+`PLANNED` i pozostają nieaktywne do czasu ich wdrożenia. Widoki logowania,
+użytkowników, audytu, ustawień i pakietu mają układy desktop/mobile oparte na
+[propozycjach UI](docs/ui-proposals/README.md).
 
 ## Architektura i kolejność prac
 

@@ -55,6 +55,8 @@ public class IdentityJwtConverter implements Converter<Jwt, AbstractAuthenticati
 					authorities.add(new SimpleGrantedAuthority(PermissionCatalog.PLATFORM_TENANT_READ));
 					authorities.add(new SimpleGrantedAuthority(PermissionCatalog.PLATFORM_TENANT_MANAGE));
 					authorities.add(new SimpleGrantedAuthority(PermissionCatalog.PLATFORM_AUDIT_READ));
+					authorities.add(new SimpleGrantedAuthority(PermissionCatalog.PLATFORM_SUBSCRIPTION_READ));
+					authorities.add(new SimpleGrantedAuthority(PermissionCatalog.PLATFORM_SUBSCRIPTION_MANAGE));
 				}
 				return new UsernamePasswordAuthenticationToken(
 						new CurrentPrincipal(id, null, true, account.isMustChangePassword()), jwt, authorities);

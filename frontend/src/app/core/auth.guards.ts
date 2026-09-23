@@ -25,6 +25,12 @@ export const permissionGuard = (permission: string): CanActivateFn => () => {
   return auth.has(permission) ? true : router.createUrlTree(['/forbidden']);
 };
 
+export const capabilityGuard = (capability: string): CanActivateFn => () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  return auth.hasCapability(capability) ? true : router.createUrlTree(['/forbidden']);
+};
+
 export const platformGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);

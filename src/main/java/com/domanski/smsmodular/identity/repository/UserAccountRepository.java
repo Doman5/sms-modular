@@ -34,5 +34,7 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
 
 	List<UserAccount> findByTenantIdAndStatus(UUID tenantId, AccountStatus status);
 
+	long countByTenantIdAndStatus(UUID tenantId, AccountStatus status);
+
 	boolean existsByTenantIdAndRoleId(UUID tenantId, UUID roleId);
 }

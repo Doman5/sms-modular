@@ -14,7 +14,9 @@ import com.domanski.smsmodular.common.api.ApiException;
 public class AuditMetadataPolicy {
 
 	private static final Set<String> LIST_KEYS = Set.of("changedFields", "addedPermissions", "removedPermissions");
-	private static final Set<String> VALUE_KEYS = Set.of("fromStatus", "toStatus");
+	private static final Set<String> VALUE_KEYS = Set.of("fromStatus", "toStatus", "capability", "metric",
+			"fromMode", "toMode");
+	private static final Set<String> NUMBER_KEYS = Set.of("fromLimit", "toLimit");
 
 	public Map<String, Object> sanitize(Map<String, Object> metadata) {
 		if (metadata == null || metadata.isEmpty()) {
@@ -31,6 +33,9 @@ public class AuditMetadataPolicy {
 				result.put(entry.getKey(), List.copyOf(list));
 			} else if (VALUE_KEYS.contains(entry.getKey()) && safeCode(value)) {
 				result.put(entry.getKey(), value);
+			} else if (NUMBER_KEYS.contains(entry.getKey()) && value instanceof Number number
+					&& number.longValue() >= 0 && number.doubleValue() == number.longValue()) {
+				result.put(entry.getKey(), number.longValue());
 			} else {
 				throw invalid();
 			}

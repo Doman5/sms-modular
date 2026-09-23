@@ -4,7 +4,7 @@ import { ApiService, Role } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { problemMessage } from '../../core/problem';
 
-const permissions = ['TENANT_READ', 'TENANT_EDIT', 'USER_READ', 'USER_MANAGE', 'ROLE_READ', 'ROLE_MANAGE', 'AUDIT_READ'];
+const permissions = ['TENANT_READ', 'TENANT_EDIT', 'USER_READ', 'USER_MANAGE', 'ROLE_READ', 'ROLE_MANAGE', 'AUDIT_READ', 'SUBSCRIPTION_READ'];
 
 @Component({
   selector: 'app-roles-page',

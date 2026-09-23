@@ -12,6 +12,7 @@ import com.domanski.smsmodular.identity.entity.AccountStatus;
 import com.domanski.smsmodular.identity.entity.TenantRole;
 import com.domanski.smsmodular.identity.entity.UserAccount;
 import com.domanski.smsmodular.tenancy.dto.TenantResponse;
+import com.domanski.smsmodular.usage.api.UsageSnapshot;
 
 public final class IdentityDtos {
 
@@ -63,7 +64,7 @@ public final class IdentityDtos {
 	}
 
 	public record ContextResponse(UserResponse user, TenantResponse tenant, Set<String> permissions,
-			List<String> capabilities, List<String> usage) {
+			List<String> capabilities, List<UsageSnapshot> usage) {
 	}
 
 	public record PlatformContextResponse(UUID id, String email, Set<String> permissions,

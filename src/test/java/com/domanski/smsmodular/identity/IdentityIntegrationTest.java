@@ -1,12 +1,17 @@
 package com.domanski.smsmodular.identity;
 
 import java.util.Base64;
+import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,9 +27,16 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.domanski.smsmodular.identity.dto.IdentityDtos.ProvisionTenantRequest;
+import com.domanski.smsmodular.identity.dto.IdentityDtos.CreateUserRequest;
+import com.domanski.smsmodular.entitlements.dto.SubscriptionDtos.UpdateAddonRequest;
+import com.domanski.smsmodular.entitlements.dto.SubscriptionDtos.UpdateLimitRequest;
+import com.domanski.smsmodular.entitlements.service.EntitlementService;
+import com.domanski.smsmodular.identity.service.UserService;
 import com.domanski.smsmodular.audit.api.AuditCallContext;
 import com.domanski.smsmodular.identity.dto.IdentityDtos.ProvisionTenantResponse;
 import com.domanski.smsmodular.identity.entity.UserAccount;
+import com.domanski.smsmodular.identity.entity.PlatformAccount;
+import com.domanski.smsmodular.identity.repository.PlatformAccountRepository;
 import com.domanski.smsmodular.identity.repository.UserAccountRepository;
 import com.domanski.smsmodular.identity.security.TokenService;
 import com.domanski.smsmodular.identity.service.TenantProvisioningService;
@@ -67,11 +79,14 @@ class IdentityIntegrationTest {
 	@Autowired MockMvc mvc;
 	@Autowired TenantProvisioningService provisioning;
 	@Autowired UserAccountRepository users;
+	@Autowired PlatformAccountRepository platformAccounts;
 	@Autowired TokenService tokens;
 	@Autowired JdbcTemplate jdbc;
 	@Autowired JwtEncoder encoder;
 	@Autowired com.domanski.smsmodular.tenancy.service.TenantService tenants;
 	@Autowired TenantRepository tenantRepository;
+	@Autowired EntitlementService entitlements;
+	@Autowired UserService userService;
 
 	@Test
 	void temporaryPasswordMustBeChangedAndOldTokenIsRevoked() throws Exception {
@@ -158,6 +173,15 @@ class IdentityIntegrationTest {
 					.content("{\"slug\":\"api-" + suffix + "\",\"name\":\"API tenant\",\"timeZone\":\"Europe/Warsaw\",\"locale\":\"pl-PL\",\"adminEmail\":\"api-" + suffix + "@example.test\",\"adminDisplayName\":\"First admin\"}"))
 				.andExpect(status().isOk()).andExpect(jsonPath("$.firstAdmin.email").exists())
 				.andExpect(jsonPath("$.temporaryPassword").isString());
+	}
+
+	@Test
+	void tenantListAcceptsMissingSearchFilter() {
+		ProvisionTenantResponse tenant = provision();
+
+		var page = tenants.list(null, null, PageRequest.of(0, 100));
+
+		assertThat(page.content()).anyMatch(response -> response.id().equals(tenant.tenant().id()));
 	}
 
 	@Test
@@ -339,6 +363,173 @@ class IdentityIntegrationTest {
 				.andExpect(jsonPath("$.content[0].correlationId").value("role-created-test"));
 	}
 
+	@Test
+	void subscriptionIsScopedAndPlannedAddonsCannotBeEnabled() throws Exception {
+		ProvisionTenantResponse first = provision();
+		ProvisionTenantResponse second = provision();
+		String firstToken = activeToken(first);
+		assertThat(jdbc.queryForObject("select count(*) from role_permissions where role_id = ? and permission_code = 'SUBSCRIPTION_READ'",
+				Integer.class, first.firstAdmin().roleId())).isEqualTo(1);
+		mvc.perform(get("/api/v1/subscription").header("Authorization", "Bearer " + firstToken))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.tenantId").value(first.tenant().id().toString()))
+				.andExpect(jsonPath("$.planCode").value("BASE"))
+				.andExpect(jsonPath("$.usage.metric").value("ACTIVE_USERS"))
+				.andExpect(jsonPath("$.usage.used").value(1))
+				.andExpect(jsonPath("$.usage.mode").value("UNLIMITED"))
+				.andExpect(jsonPath("$.modules[?(@.key == 'PROJECTS')].availability").value("PLANNED"));
+		mvc.perform(get("/api/v1/me/context").header("Authorization", "Bearer " + firstToken))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.usage[0].used").value(1));
+		mvc.perform(get("/api/v1/subscription").header("Authorization", "Bearer " + activeToken(second)))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.tenantId").value(second.tenant().id().toString()));
+		assertThatThrownBy(() -> entitlements.updateAddon(first.tenant().id(), "PROJECTS",
+				new UpdateAddonRequest(true, null, null), AuditCallContext.system("planned-addon")))
+				.isInstanceOf(ApiException.class).satisfies(error -> assertThat(((ApiException) error).getStatus())
+						.isEqualTo(HttpStatus.CONFLICT));
+		mvc.perform(get("/api/v1/subscription"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void activeUserLimitBlocksCreateAndReactivationButPreservesExistingAccounts() throws Exception {
+		ProvisionTenantResponse tenant = provision();
+		UUID tenantId = tenant.tenant().id();
+		String token = activeToken(tenant);
+		entitlements.updateActiveUserLimit(tenantId, new UpdateLimitRequest("FINITE", 2L, null),
+				AuditCallContext.system("limit-two"));
+		String suffix = UUID.randomUUID().toString().substring(0, 8);
+		String created = mvc.perform(post("/api/v1/users").header("Authorization", "Bearer " + token)
+				.contentType("application/json")
+				.content("{\"email\":\"limited-" + suffix + "@example.test\",\"displayName\":\"Limited\",\"roleId\":\""
+						+ tenant.firstAdmin().roleId() + "\"}"))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		String secondId = com.jayway.jsonpath.JsonPath.read(created, "$.user.id");
+		entitlements.updateActiveUserLimit(tenantId, new UpdateLimitRequest("FINITE", 1L, null),
+				AuditCallContext.system("limit-one"));
+		mvc.perform(get("/api/v1/subscription").header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.usage.used").value(2))
+				.andExpect(jsonPath("$.usage.limit").value(1))
+				.andExpect(jsonPath("$.usage.remaining").value(0));
+		mvc.perform(post("/api/v1/users").header("Authorization", "Bearer " + token)
+				.contentType("application/json")
+				.content("{\"email\":\"blocked-" + suffix + "@example.test\",\"displayName\":\"Blocked\",\"roleId\":\""
+						+ tenant.firstAdmin().roleId() + "\"}"))
+				.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("LIMIT_EXCEEDED"));
+		mvc.perform(put("/api/v1/users/{id}/status", secondId).header("Authorization", "Bearer " + token)
+				.contentType("application/json").content("{\"status\":\"DISABLED\"}"))
+				.andExpect(status().isOk());
+		mvc.perform(put("/api/v1/users/{id}/status", secondId).header("Authorization", "Bearer " + token)
+				.contentType("application/json").content("{\"status\":\"ACTIVE\"}"))
+				.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("LIMIT_EXCEEDED"));
+		assertThat(userService.activeCount(tenantId)).isEqualTo(1);
+		entitlements.updateActiveUserLimit(tenantId, new UpdateLimitRequest("INHERIT", null, null),
+				AuditCallContext.system("limit-inherit"));
+		mvc.perform(put("/api/v1/users/{id}/status", secondId).header("Authorization", "Bearer " + token)
+				.contentType("application/json").content("{\"status\":\"ACTIVE\"}"))
+				.andExpect(status().isOk());
+		assertThat(userService.activeCount(tenantId)).isEqualTo(2);
+		assertThat(jdbc.queryForObject("select count(*) from audit_entries where tenant_id = ? and action_code = 'LIMIT_UPDATED'",
+				Integer.class, tenantId)).isEqualTo(3);
+	}
+
+	@Test
+	void simultaneousUserCreationRespectsFiniteLimit() throws Exception {
+		ProvisionTenantResponse tenant = provision();
+		UUID tenantId = tenant.tenant().id();
+		entitlements.updateActiveUserLimit(tenantId, new UpdateLimitRequest("FINITE", 2L, null),
+				AuditCallContext.system("concurrency-limit"));
+		CountDownLatch ready = new CountDownLatch(2);
+		CountDownLatch start = new CountDownLatch(1);
+		var pool = Executors.newFixedThreadPool(2);
+		try {
+			var tasks = java.util.stream.IntStream.range(0, 2).mapToObj(index -> pool.submit(() -> {
+				ready.countDown();
+				start.await();
+				try {
+					userService.create(tenantId, new CreateUserRequest("parallel-" + UUID.randomUUID() + "@example.test",
+							"Parallel", tenant.firstAdmin().roleId()), AuditCallContext.system("parallel-" + index));
+					return true;
+				} catch (ApiException exception) {
+					assertThat(exception.getStatus()).isEqualTo(HttpStatus.FORBIDDEN);
+					return false;
+				}
+			})).toList();
+			assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+			start.countDown();
+			assertThat(tasks.stream().filter(task -> {
+				try { return task.get(15, TimeUnit.SECONDS); }
+				catch (Exception exception) { throw new RuntimeException(exception); }
+			}).count()).isEqualTo(1);
+			assertThat(userService.activeCount(tenantId)).isEqualTo(2);
+		} finally {
+			start.countDown();
+			pool.shutdownNow();
+		}
+	}
+
+	@Test
+	void platformSubscriptionCommandsRequirePermissionsAndValidateLimits() throws Exception {
+		ProvisionTenantResponse tenant = provision();
+		String platformToken = activePlatformToken();
+		String tenantToken = activeToken(tenant);
+		UUID tenantId = tenant.tenant().id();
+		mvc.perform(get("/api/platform/v1/tenants/{tenantId}/subscription", tenantId)
+				.header("Authorization", "Bearer " + tenantToken)).andExpect(status().isForbidden());
+		mvc.perform(get("/api/platform/v1/tenants/{tenantId}/subscription", tenantId)
+				.header("Authorization", "Bearer " + platformToken))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.limitOverride.mode").value("INHERIT"));
+		mvc.perform(put("/api/platform/v1/tenants/{tenantId}/subscription/limits/ACTIVE_USERS", tenantId)
+				.header("Authorization", "Bearer " + tenantToken).contentType("application/json")
+				.content("{\"mode\":\"FINITE\",\"value\":3}"))
+				.andExpect(status().isForbidden());
+		mvc.perform(put("/api/platform/v1/tenants/{tenantId}/subscription/limits/ACTIVE_USERS", tenantId)
+				.header("Authorization", "Bearer " + platformToken).contentType("application/json")
+				.content("{\"mode\":\"FINITE\",\"value\":0}"))
+				.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("LIMIT_INVALID"));
+		mvc.perform(put("/api/platform/v1/tenants/{tenantId}/subscription/limits/ACTIVE_USERS", tenantId)
+				.header("Authorization", "Bearer " + platformToken).contentType("application/json")
+				.content("{\"mode\":\"FINITE\",\"value\":3}"))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.usage.limit").value(3))
+				.andExpect(jsonPath("$.limitOverride.value").value(3));
+		mvc.perform(put("/api/platform/v1/tenants/{tenantId}/subscription/addons/PROJECTS", tenantId)
+				.header("Authorization", "Bearer " + platformToken).contentType("application/json")
+				.content("{\"enabled\":true}"))
+				.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("MODULE_NOT_AVAILABLE"));
+	}
+
+	@Test
+	void addonDependencyAndPeriodsAreEnforced() {
+		ProvisionTenantResponse tenant = provision();
+		UUID tenantId = tenant.tenant().id();
+		jdbc.update("update module_catalog set status = 'AVAILABLE' where key in ('PROJECTS', 'PLANNING')");
+		try {
+			assertThatThrownBy(() -> entitlements.updateAddon(tenantId, "PLANNING",
+					new UpdateAddonRequest(true, null, null), AuditCallContext.system("planning-first")))
+					.isInstanceOf(ApiException.class).satisfies(error -> assertThat(((ApiException) error).getCode())
+							.isEqualTo("ADDON_DEPENDENCY_REQUIRED"));
+			entitlements.updateAddon(tenantId, "PROJECTS", new UpdateAddonRequest(true, null, null),
+					AuditCallContext.system("projects-on"));
+			entitlements.updateAddon(tenantId, "PLANNING", new UpdateAddonRequest(true, null, null),
+					AuditCallContext.system("planning-on"));
+			assertThat(entitlements.snapshot(tenantId).capabilities()).contains("PROJECTS", "PLANNING");
+			assertThatThrownBy(() -> entitlements.updateAddon(tenantId, "PROJECTS",
+					new UpdateAddonRequest(false, null, null), AuditCallContext.system("projects-off")))
+					.isInstanceOf(ApiException.class).satisfies(error -> assertThat(((ApiException) error).getCode())
+							.isEqualTo("ADDON_DEPENDENCY_IN_USE"));
+			assertThatThrownBy(() -> entitlements.updateAddon(tenantId, "PLANNING",
+					new UpdateAddonRequest(true, Instant.now().plusSeconds(120), Instant.now().plusSeconds(60)),
+					AuditCallContext.system("invalid-period")))
+					.isInstanceOf(ApiException.class).satisfies(error -> assertThat(((ApiException) error).getCode())
+							.isEqualTo("ADDON_DATES_INVALID"));
+			entitlements.updateAddon(tenantId, "PLANNING", new UpdateAddonRequest(false, null, null),
+					AuditCallContext.system("planning-off"));
+			entitlements.updateAddon(tenantId, "PROJECTS", new UpdateAddonRequest(false, null, null),
+					AuditCallContext.system("projects-off-after"));
+			assertThat(entitlements.snapshot(tenantId).capabilities()).doesNotContain("PROJECTS", "PLANNING");
+		} finally {
+			jdbc.update("update module_catalog set status = 'PLANNED' where key in ('PROJECTS', 'PLANNING')");
+		}
+	}
+
 	private ProvisionTenantResponse provision() {
 		String suffix = UUID.randomUUID().toString().substring(0, 8);
 		return provisioning.provision(new ProvisionTenantRequest("tenant-" + suffix, "Tenant " + suffix,
@@ -351,5 +542,12 @@ class IdentityIntegrationTest {
 		user.setMustChangePassword(false);
 		users.save(user);
 		return tokens.issue(user).accessToken();
+	}
+
+	private String activePlatformToken() {
+		PlatformAccount account = new PlatformAccount(UUID.randomUUID(), "operator-" + UUID.randomUUID() + "@example.test",
+				"not-used", Instant.now());
+		account.setMustChangePassword(false);
+		return tokens.issue(platformAccounts.save(account)).accessToken();
 	}
 }

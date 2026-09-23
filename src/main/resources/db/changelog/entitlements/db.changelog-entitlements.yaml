@@ -1,0 +1,169 @@
+databaseChangeLog:
+  - changeSet:
+      id: entitlements-001-tables
+      author: sms-modular
+      changes:
+        - createTable:
+            tableName: module_catalog
+            columns:
+              - column: { name: key, type: varchar(64), constraints: { primaryKey: true, nullable: false } }
+              - column: { name: type, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: depends_on, type: varchar(64) }
+        - addForeignKeyConstraint:
+            baseTableName: module_catalog
+            baseColumnNames: depends_on
+            referencedTableName: module_catalog
+            referencedColumnNames: key
+            constraintName: fk_module_catalog_dependency
+        - createTable:
+            tableName: plans
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: code, type: varchar(64), constraints: { nullable: false, unique: true } }
+        - createTable:
+            tableName: plan_versions
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: plan_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: version, type: integer, constraints: { nullable: false } }
+              - column: { name: active_user_limit_mode, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: active_user_limit, type: bigint }
+        - addForeignKeyConstraint:
+            baseTableName: plan_versions
+            baseColumnNames: plan_id
+            referencedTableName: plans
+            referencedColumnNames: id
+            constraintName: fk_plan_versions_plan
+        - addUniqueConstraint:
+            tableName: plan_versions
+            columnNames: plan_id,version
+            constraintName: uq_plan_versions_number
+        - createTable:
+            tableName: plan_modules
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: plan_version_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: module_key, type: varchar(64), constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: plan_modules
+            baseColumnNames: plan_version_id
+            referencedTableName: plan_versions
+            referencedColumnNames: id
+            constraintName: fk_plan_modules_version
+        - addForeignKeyConstraint:
+            baseTableName: plan_modules
+            baseColumnNames: module_key
+            referencedTableName: module_catalog
+            referencedColumnNames: key
+            constraintName: fk_plan_modules_module
+        - addUniqueConstraint:
+            tableName: plan_modules
+            columnNames: plan_version_id,module_key
+            constraintName: uq_plan_modules_key
+        - createTable:
+            tableName: tenant_subscriptions
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false, unique: true } }
+              - column: { name: plan_version_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: status, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: starts_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: ends_at, type: timestamp with time zone }
+        - addForeignKeyConstraint:
+            baseTableName: tenant_subscriptions
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_tenant_subscriptions_tenant
+        - addForeignKeyConstraint:
+            baseTableName: tenant_subscriptions
+            baseColumnNames: plan_version_id
+            referencedTableName: plan_versions
+            referencedColumnNames: id
+            constraintName: fk_tenant_subscriptions_version
+        - createTable:
+            tableName: tenant_addons
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: module_key, type: varchar(64), constraints: { nullable: false } }
+              - column: { name: status, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: starts_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: ends_at, type: timestamp with time zone }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: tenant_addons
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_tenant_addons_tenant
+        - addForeignKeyConstraint:
+            baseTableName: tenant_addons
+            baseColumnNames: module_key
+            referencedTableName: module_catalog
+            referencedColumnNames: key
+            constraintName: fk_tenant_addons_module
+        - addUniqueConstraint:
+            tableName: tenant_addons
+            columnNames: tenant_id,module_key
+            constraintName: uq_tenant_addons_key
+        - createTable:
+            tableName: tenant_limit_overrides
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: metric_code, type: varchar(64), constraints: { nullable: false } }
+              - column: { name: mode, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: limit_value, type: bigint }
+              - column: { name: expires_at, type: timestamp with time zone }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: tenant_limit_overrides
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_tenant_limit_overrides_tenant
+        - addUniqueConstraint:
+            tableName: tenant_limit_overrides
+            columnNames: tenant_id,metric_code
+            constraintName: uq_tenant_limit_overrides_metric
+        - createIndex:
+            tableName: tenant_addons
+            indexName: ix_tenant_addons_tenant_status
+            columns:
+              - column: { name: tenant_id }
+              - column: { name: status }
+        - sql:
+            sql: "ALTER TABLE plan_versions ADD CONSTRAINT chk_plan_versions_limit CHECK ((active_user_limit_mode = 'UNLIMITED' AND active_user_limit IS NULL) OR (active_user_limit_mode = 'FINITE' AND active_user_limit >= 1))"
+        - sql:
+            sql: "ALTER TABLE tenant_limit_overrides ADD CONSTRAINT chk_tenant_limit_overrides_value CHECK ((mode IN ('UNLIMITED','INHERIT') AND limit_value IS NULL) OR (mode = 'FINITE' AND limit_value >= 1))"
+        - sql:
+            sql: "ALTER TABLE tenant_addons ADD CONSTRAINT chk_tenant_addons_dates CHECK (ends_at IS NULL OR ends_at > starts_at)"
+  - changeSet:
+      id: entitlements-002-seed
+      author: sms-modular
+      changes:
+        - sql:
+            sql: "INSERT INTO module_catalog (key,type,status,depends_on) VALUES ('EMPLOYEE_DIRECTORY','BASE','PLANNED',NULL),('SMS_INBOUND','BASE','PLANNED',NULL),('AI_INTERPRETATION','BASE','PLANNED',NULL),('TIME_TRACKING','BASE','PLANNED',NULL),('ABSENCE_EVENTS','BASE','PLANNED',NULL),('LEAVE_MANAGEMENT','ADD_ON','PLANNED',NULL),('PAYROLL','ADD_ON','PLANNED',NULL),('PROJECTS','ADD_ON','PLANNED',NULL),('PLANNING','ADD_ON','PLANNED','PROJECTS'),('TOOL_ASSIGNMENT','ADD_ON','PLANNED',NULL)"
+        - sql:
+            sql: "INSERT INTO plans (id,code) VALUES ('00000000-0000-0000-0000-000000000501','BASE')"
+        - sql:
+            sql: "INSERT INTO plan_versions (id,plan_id,version,active_user_limit_mode,active_user_limit) VALUES ('00000000-0000-0000-0000-000000000502','00000000-0000-0000-0000-000000000501',1,'UNLIMITED',NULL)"
+        - sql:
+            sql: "INSERT INTO plan_modules (id,plan_version_id,module_key) SELECT gen_random_uuid(),'00000000-0000-0000-0000-000000000502',key FROM module_catalog WHERE type = 'BASE'"
+        - sql:
+            sql: "INSERT INTO tenant_subscriptions (id,tenant_id,plan_version_id,status,starts_at) SELECT gen_random_uuid(),id,'00000000-0000-0000-0000-000000000502','ACTIVE',created_at FROM tenants ON CONFLICT (tenant_id) DO NOTHING"
+        - sql:
+            sql: "INSERT INTO role_permissions (id,tenant_id,role_id,permission_code) SELECT gen_random_uuid(),tenant_id,id,'SUBSCRIPTION_READ' FROM tenant_roles WHERE code = 'OWNER' ON CONFLICT (tenant_id,role_id,permission_code) DO NOTHING"
+  - changeSet:
+      id: entitlements-003-employee-limit
+      author: sms-modular
+      changes:
+        - addColumn:
+            tableName: plan_versions
+            columns:
+              - column: { name: active_employee_limit_mode, type: varchar(16), defaultValue: UNLIMITED, constraints: { nullable: false } }
+              - column: { name: active_employee_limit, type: bigint }
+        - sql:
+            sql: "ALTER TABLE plan_versions ADD CONSTRAINT chk_plan_versions_employee_limit CHECK ((active_employee_limit_mode = 'UNLIMITED' AND active_employee_limit IS NULL) OR (active_employee_limit_mode = 'FINITE' AND active_employee_limit >= 1))"

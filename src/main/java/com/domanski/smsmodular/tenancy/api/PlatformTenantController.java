@@ -42,8 +42,9 @@ public class PlatformTenantController {
 
 	@GetMapping
 	@PreAuthorize("hasAuthority('PLATFORM_TENANT_READ')")
-	public PageResponse<TenantResponse> list(@RequestParam(required = false) TenantStatus status, Pageable pageable) {
-		return tenants.list(status, pageable);
+	public PageResponse<TenantResponse> list(@RequestParam(required = false) TenantStatus status,
+			@RequestParam(required = false) String search, Pageable pageable) {
+		return tenants.list(status, search, pageable);
 	}
 
 	@GetMapping("/{id}")

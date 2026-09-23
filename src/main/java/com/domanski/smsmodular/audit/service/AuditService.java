@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import jakarta.persistence.criteria.Predicate;
@@ -76,11 +77,14 @@ public class AuditService {
 
 	private PageResponse<AuditEntryResponse> list(UUID tenantId, boolean global, AuditFilter filter,
 			Pageable pageable) {
-		AuditFilter effective = filter == null ? new AuditFilter(null, null, null, null, null, null, null) : filter;
+		AuditFilter effective = filter == null
+				? new AuditFilter(null, null, null, null, null, null, null, null)
+				: filter;
 		Instant to = effective.to() == null ? clock.instant().plusSeconds(1) : effective.to();
 		Instant from = effective.from() == null ? to.minus(30, ChronoUnit.DAYS) : effective.from();
 		if (!to.isAfter(from) || (effective.module() != null && !validCode(effective.module()))
-				|| (effective.action() != null && !validCode(effective.action()))) {
+				|| (effective.action() != null && !validCode(effective.action()))
+				|| (effective.search() != null && effective.search().trim().length() > 100)) {
 			throw new ApiException(HttpStatus.BAD_REQUEST, "AUDIT_FILTER_INVALID", "Audit filters are invalid");
 		}
 		Specification<AuditEntry> specification = (root, query, builder) -> {
@@ -93,6 +97,23 @@ public class AuditService {
 			if (effective.action() != null) predicates.add(builder.equal(root.get("action"), effective.action()));
 			if (effective.result() != null) predicates.add(builder.equal(root.get("result"), effective.result()));
 			if (effective.targetId() != null) predicates.add(builder.equal(root.get("targetId"), effective.targetId()));
+			if (effective.search() != null && !effective.search().isBlank()) {
+				String term = effective.search().trim().toLowerCase(Locale.ROOT)
+						.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+				String pattern = "%" + term + "%";
+				List<Predicate> matches = new ArrayList<>(List.of(
+						builder.like(builder.lower(root.get("module")), pattern, '\\'),
+						builder.like(builder.lower(root.get("action")), pattern, '\\'),
+						builder.like(builder.lower(root.get("targetType")), pattern, '\\'),
+						builder.like(builder.lower(root.get("correlationId")), pattern, '\\')));
+				try {
+					UUID id = UUID.fromString(effective.search().trim());
+					matches.add(builder.equal(root.get("actorId"), id));
+					matches.add(builder.equal(root.get("targetId"), id));
+				} catch (IllegalArgumentException ignored) {
+				}
+				predicates.add(builder.or(matches.toArray(Predicate[]::new)));
+			}
 			return builder.and(predicates.toArray(Predicate[]::new));
 		};
 		Pageable fixed = PageRequest.of(pageable.getPageNumber(), Math.min(pageable.getPageSize(), 100),

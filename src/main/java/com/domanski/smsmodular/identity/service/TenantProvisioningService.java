@@ -15,6 +15,7 @@ import com.domanski.smsmodular.audit.api.AuditCallContext;
 import com.domanski.smsmodular.audit.api.AuditCommand;
 import com.domanski.smsmodular.audit.service.AuditService;
 import java.util.Map;
+import com.domanski.smsmodular.entitlements.service.EntitlementService;
 
 @Service
 @RequiredArgsConstructor
@@ -24,11 +25,13 @@ public class TenantProvisioningService {
 	private final RoleService roles;
 	private final UserService users;
 	private final AuditService audit;
+	private final EntitlementService entitlements;
 
 	@Transactional
 	public ProvisionTenantResponse provision(ProvisionTenantRequest request, AuditCallContext context) {
 		TenantResponse tenant = tenants.create(new CreateTenantRequest(request.slug(), request.name(),
 				request.timeZone(), request.locale()));
+		entitlements.assignBasePlan(tenant.id());
 		TenantRole owner = roles.createOwner(tenant.id());
 		CreatedUserResponse admin = users.createFirstAdmin(tenant.id(), request.adminEmail(),
 				request.adminDisplayName(), owner.getId());

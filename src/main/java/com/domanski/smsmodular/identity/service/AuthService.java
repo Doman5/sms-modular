@@ -34,6 +34,9 @@ import com.domanski.smsmodular.identity.repository.UserAccountRepository;
 import com.domanski.smsmodular.identity.security.TokenService;
 import com.domanski.smsmodular.tenancy.api.TenantStatus;
 import com.domanski.smsmodular.tenancy.service.TenantService;
+import com.domanski.smsmodular.entitlements.service.EntitlementService;
+import com.domanski.smsmodular.usage.service.UsageService;
+import com.domanski.smsmodular.employee.service.EmployeeService;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +52,9 @@ public class AuthService {
 	private final RoleService roles;
 	private final Clock clock;
 	private final AuditService audit;
+	private final EntitlementService entitlements;
+	private final UsageService usage;
+	private final EmployeeService employees;
 
 	@Transactional(noRollbackFor = ApiException.class)
 	public LoginResponse login(LoginRequest request, String correlationId) {
@@ -149,7 +155,11 @@ public class AuthService {
 		UserAccount user = users.findByTenantIdAndId(tenantId, id)
 				.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User was not found"));
 		return new ContextResponse(UserResponse.from(user), tenants.get(tenantId),
-				roles.permissions(tenantId, user.getRoleId()), java.util.List.of(), java.util.List.of());
+				roles.permissions(tenantId, user.getRoleId()),
+				entitlements.snapshot(tenantId).capabilities().stream().sorted().toList(),
+				java.util.List.of(usage.activeUsers(tenantId,
+						users.countByTenantIdAndStatus(tenantId, AccountStatus.ACTIVE)),
+						usage.activeEmployees(tenantId, employees.activeCount(tenantId))));
 	}
 
 	@Transactional(readOnly = true)
@@ -158,7 +168,9 @@ public class AuthService {
 				.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User was not found"));
 		return new PlatformContextResponse(id, account.getNormalizedEmail(),
 				java.util.Set.of(PermissionCatalog.PLATFORM_TENANT_READ, PermissionCatalog.PLATFORM_TENANT_MANAGE,
-						PermissionCatalog.PLATFORM_AUDIT_READ),
+						PermissionCatalog.PLATFORM_AUDIT_READ,
+						PermissionCatalog.PLATFORM_SUBSCRIPTION_READ,
+						PermissionCatalog.PLATFORM_SUBSCRIPTION_MANAGE),
 				account.isMustChangePassword());
 	}
 

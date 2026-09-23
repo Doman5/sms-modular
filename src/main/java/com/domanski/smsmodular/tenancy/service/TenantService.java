@@ -86,10 +86,11 @@ public class TenantService {
 	}
 
 	@Transactional(readOnly = true)
-	public PageResponse<TenantResponse> list(TenantStatus status, Pageable pageable) {
-		Page<Tenant> tenants = status == null
-				? tenantRepository.findAll(pageable)
-				: tenantRepository.findAllByStatus(status, pageable);
+	public PageResponse<TenantResponse> list(TenantStatus status, String search, Pageable pageable) {
+		String normalized = search == null || search.isBlank() ? "" : search.trim().toLowerCase(Locale.ROOT);
+		if (normalized.length() > 120) throw new ApiException(HttpStatus.BAD_REQUEST,
+				"TENANT_SEARCH_INVALID", "Search query is too long");
+		Page<Tenant> tenants = tenantRepository.search(status, normalized, pageable);
 		return PageResponse.from(tenants.map(TenantResponse::from));
 	}
 

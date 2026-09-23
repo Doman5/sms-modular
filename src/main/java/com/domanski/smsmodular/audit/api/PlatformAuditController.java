@@ -32,12 +32,13 @@ public class PlatformAuditController {
 			@RequestParam(required = false) Instant to, @RequestParam(required = false) UUID actorId,
 			@RequestParam(required = false) String module, @RequestParam(required = false) String action,
 			@RequestParam(required = false) AuditResult result, @RequestParam(required = false) UUID targetId,
+			@RequestParam(required = false) String search,
 			Pageable pageable) {
 		if (scope != null && !scope.equals("global")) {
 			throw new com.domanski.smsmodular.common.api.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,
 					"AUDIT_SCOPE_INVALID", "Audit scope is invalid");
 		}
 		return audit.listPlatform(tenantId, "global".equals(scope),
-				new AuditFilter(from, to, actorId, module, action, result, targetId), pageable);
+				new AuditFilter(from, to, actorId, module, action, result, targetId, search), pageable);
 	}
 }

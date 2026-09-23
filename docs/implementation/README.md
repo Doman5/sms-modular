@@ -3,7 +3,9 @@
 Dokumenty opisują zachowania legacy, wymagania produktu i makiety. Implementacja
 powstaje etapami jako prosty modularny monolit warstwowy.
 
-Etapy 0–4 są wdrożone. Następny etap to Entitlements, potem Usage.
+Etapy 0–5 są wdrożone. Etap 5 obejmuje Entitlements oraz pomiar aktywnych
+użytkowników w Usage. Pozostałe metryki Usage powstaną wraz z modułami, które
+je wytwarzają. Następny etap to Employee Directory.
 
 ## Zasady realizacji
 
@@ -27,7 +29,7 @@ Etapy 0–4 są wdrożone. Następny etap to Entitlements, potem Usage.
 | 2 | [Tenancy](platform/tenancy.md) | jedna encja tenant, tenant service i tenantowe repozytorium |
 | 3 | [Identity & Access](platform/identity-access.md) | logowanie, JWT, permissions i bezpieczne endpointy tenant/platform |
 | 4 | [Audit](platform/audit.md) | zapis audytu dla operacji zmieniających stan i filtrowany odczyt |
-| 5 | [Entitlements](platform/entitlements.md), potem [Usage](platform/usage.md) | serwerowa decyzja planu, dodatku i limitu |
+| 5 | [Entitlements](platform/entitlements.md), potem [Usage](platform/usage.md) | wdrożone: plan BASE v1, katalog modułów, dodatki, limit aktywnych użytkowników i jego egzekwowanie |
 | 6 | [Employee Directory](base/employee-directory.md) | kartoteka i tenantowe wyszukiwanie pracowników |
 | 7 | [Time Tracking](base/time-tracking.md), [Absence Events](base/absence-events.md) | rejestracja czasu i nieobecności |
 | 8 | [Integration Runtime](platform/integration-runtime.md), [SMS Inbound](base/sms-inbound.md) | trwały inbound, idempotencja, kolejka review i integracja transportowa |

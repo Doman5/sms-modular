@@ -7,9 +7,9 @@
   --app-border: #d9e1ec;
   --app-text: #1f2937;
   --app-text-muted: #64748b;
-  --app-primary: #2f67f6;
-  --app-primary-soft: #e8efff;
-  --app-sidebar: #12233d;
+  --app-primary: #087f83;
+  --app-primary-soft: #e2f6f5;
+  --app-sidebar: #142b43;
   --app-success: #127a55;
   --app-success-soft: #e8f8f0;
   --app-warning: #9a6500;
@@ -43,11 +43,13 @@ button:hover:not(:disabled) { border-color: var(--app-primary); }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 2px; }
 a { color: var(--app-primary); }
 .primary { background: var(--app-primary); color: #fff; border-color: var(--app-primary); font-weight: 700; }
-.primary:hover:not(:disabled) { background: #1f55dd; }
+.primary:hover:not(:disabled) { background: #066b70; }
 .brand { color: var(--app-primary); font-size: 1.3rem; font-weight: 800; text-decoration: none; }
-.auth-layout { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; }
-.auth-card { display: grid; gap: 1rem; width: min(100%, 29rem); background: #fff; padding: 2rem; border: 1px solid var(--app-border); border-radius: 20px; box-shadow: var(--app-shadow); }
-.auth-card h1, .page h1 { margin: 0; color: #172554; }
+.auth-layout { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: #f6faff; }
+.auth-card { display: grid; gap: 1rem; width: min(100%, 34rem); background: #fff; padding: 0 2.5rem 2rem; border: 1px solid var(--app-border); border-radius: 12px; box-shadow: var(--app-shadow); overflow: hidden; }
+.auth-card .brand { display: block; margin: 0 -2.5rem .5rem; padding: 1.5rem 2.5rem; color: #fff; background: var(--app-sidebar); text-align: center; }
+.auth-card h1, .page h1 { margin: 0; color: #14243e; }
+.auth-card .primary { width: 100%; }
 .auth-card p, .page-heading p { margin: 0; color: var(--app-text-muted); }
 .auth-card label, .form-grid label { display: grid; gap: .45rem; font-weight: 600; }
 input, select { width: 100%; min-height: 2.75rem; border: 1px solid var(--app-border); border-radius: 10px; padding: .6rem .8rem; background: #fff; }
@@ -57,11 +59,12 @@ input[type=checkbox] { width: auto; min-height: auto; }
 .switch-row .selected { color: var(--app-primary); border-color: var(--app-primary); background: var(--app-primary-soft); }
 .link-button { border: 0; color: var(--app-primary); }
 .shell { display: flex; min-height: 100vh; }
-.sidebar { width: 15rem; flex-shrink: 0; background: var(--app-sidebar); color: #fff; display: flex; flex-direction: column; gap: 2rem; padding: 1.5rem; }
-.sidebar .brand { color: #fff; }
+.sidebar { width: 14rem; flex-shrink: 0; background: var(--app-sidebar); color: #fff; display: flex; flex-direction: column; gap: 2rem; padding: 1.5rem .75rem; }
+.sidebar .brand { color: #fff; padding: 0 .75rem; }
 .sidebar nav { display: grid; gap: .4rem; }
 .sidebar a:not(.brand) { display: block; color: #cad7ed; padding: .75rem; text-decoration: none; border-radius: 10px; }
-.sidebar a.active, .sidebar a:not(.brand):hover { background: #274669; color: #fff; }
+.sidebar a.active, .sidebar a:not(.brand):hover { background: #087f83; color: #fff; }
+.sidebar nav i { width: 1.6rem; text-align: center; margin-right: .5rem; }
 .sidebar button { margin-top: auto; background: transparent; color: #fff; border-color: #5e718b; }
 .workspace { min-width: 0; flex: 1; }
 .topbar { min-height: 4.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid var(--app-border); }
@@ -91,12 +94,13 @@ fieldset { border: 1px solid var(--app-border); border-radius: 12px; }
 .checkbox-grid label { display: flex; align-items: center; }
 @media (max-width: 760px) {
   .shell { display: block; }
-  .sidebar { width: 100%; padding: 1rem; gap: .7rem; }
-  .sidebar nav { display: flex; overflow-x: auto; }
-  .sidebar a:not(.brand) { white-space: nowrap; }
-  .sidebar button { align-self: flex-start; }
+  .sidebar { width: 100%; padding: .85rem 1rem; gap: .7rem; }
+  .sidebar nav { display: none; }
+  .sidebar button { display: none; }
+  .mobile-nav { display: flex; }
   .topbar { padding: .8rem 1rem; font-size: .9rem; }
-  .page { padding: 1rem; }
+  .page { padding: 1rem 1rem 6rem; }
   .page-heading { align-items: stretch; }
-  .auth-card { padding: 1.25rem; }
+  .auth-card { padding: 0 1.25rem 1.25rem; }
+  .auth-card .brand { margin: 0 -1.25rem .5rem; padding: 1.15rem 1.25rem; text-align: left; }
 }

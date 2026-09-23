@@ -19,6 +19,7 @@ export interface TenantSummary {
   status: 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
   timeZone: string;
   locale: string;
+  createdAt?: string;
 }
 
 export interface TenantContext {
@@ -26,7 +27,15 @@ export interface TenantContext {
   tenant: TenantSummary;
   permissions: string[];
   capabilities: string[];
-  usage: string[];
+  usage: UsageSnapshot[];
+}
+
+export interface UsageSnapshot {
+  metric: string;
+  used: number;
+  mode: 'FINITE' | 'UNLIMITED';
+  limit: number | null;
+  remaining: number | null;
 }
 
 export interface PlatformContext {
@@ -117,6 +126,10 @@ export class AuthService {
   has(permission: string): boolean {
     const context = this.isPlatform() ? this.platformContext() : this.tenantContext();
     return context?.permissions.includes(permission) ?? false;
+  }
+
+  hasCapability(capability: string): boolean {
+    return this.tenantContext()?.capabilities.includes(capability) ?? false;
   }
 
   logout(): void {

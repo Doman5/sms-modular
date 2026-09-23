@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: employee-001-table
+      author: sms-modular
+      changes:
+        - createTable:
+            tableName: employees
+            columns:
+              - column: { name: id, type: uuid, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: tenant_id, type: uuid, constraints: { nullable: false } }
+              - column: { name: first_name, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: last_name, type: varchar(100), constraints: { nullable: false } }
+              - column: { name: normalized_phone, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: phone_display, type: varchar(30), constraints: { nullable: false } }
+              - column: { name: email, type: varchar(150) }
+              - column: { name: position, type: varchar(120), constraints: { nullable: false } }
+              - column: { name: note, type: varchar(2000) }
+              - column: { name: status, type: varchar(16), constraints: { nullable: false } }
+              - column: { name: employment_date, type: date, constraints: { nullable: false } }
+              - column: { name: created_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: updated_at, type: timestamp with time zone, constraints: { nullable: false } }
+              - column: { name: version, type: bigint, defaultValueNumeric: 0, constraints: { nullable: false } }
+        - addForeignKeyConstraint:
+            baseTableName: employees
+            baseColumnNames: tenant_id
+            referencedTableName: tenants
+            referencedColumnNames: id
+            constraintName: fk_employees_tenant
+        - addUniqueConstraint:
+            tableName: employees
+            columnNames: tenant_id,normalized_phone
+            constraintName: uq_employees_tenant_phone
+        - addUniqueConstraint:
+            tableName: employees
+            columnNames: tenant_id,id
+            constraintName: uq_employees_tenant_id
+        - createIndex:
+            tableName: employees
+            indexName: ix_employees_tenant_status_name
+            columns:
+              - column: { name: tenant_id }
+              - column: { name: status }
+              - column: { name: last_name }
+              - column: { name: first_name }
+              - column: { name: id }
+        - sql:
+            sql: "ALTER TABLE employees ADD CONSTRAINT chk_employees_status CHECK (status IN ('ACTIVE','INACTIVE'))"
+  - changeSet:
+      id: employee-002-availability-and-permissions
+      author: sms-modular
+      changes:
+        - update:
+            tableName: module_catalog
+            columns:
+              - column: { name: status, value: AVAILABLE }
+            where: key = 'EMPLOYEE_DIRECTORY'
+        - sql:
+            sql: "INSERT INTO role_permissions (id,tenant_id,role_id,permission_code) SELECT gen_random_uuid(),tenant_id,id,permission_code FROM tenant_roles CROSS JOIN (VALUES ('EMPLOYEE_READ'),('EMPLOYEE_CREATE'),('EMPLOYEE_EDIT'),('EMPLOYEE_STATUS_CHANGE')) AS new_permissions(permission_code) WHERE code = 'OWNER' ON CONFLICT (tenant_id,role_id,permission_code) DO NOTHING"

@@ -32,6 +32,32 @@ describe('ApiService', () => {
     request.flush({ tenant: {}, firstAdmin: {}, temporaryPassword: 'one-time-value' });
   });
 
+  it('filters employees within the tenant API', () => {
+    api.employees(2, ' Jan ', 'ACTIVE', 'Kierowca').subscribe();
+    const request = http.expectOne(value => value.url === '/api/v1/employees');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('search')).toBe('Jan');
+    expect(request.request.params.get('status')).toBe('ACTIVE');
+    expect(request.request.params.get('position')).toBe('Kierowca');
+    expect(request.request.params.has('tenantId')).toBeFalse();
+    request.flush({ content: [], page: 2, size: 20, totalElements: 0, totalPages: 0 });
+  });
+
+  it('creates employees and changes status with a version', () => {
+    const input = { firstName: 'Jan', lastName: 'Nowak', phone: '501234567', email: null,
+      position: 'Kierowca', note: null, employmentDate: '2024-01-01', status: 'ACTIVE' as const };
+    api.createEmployee(input).subscribe();
+    const created = http.expectOne('/api/v1/employees');
+    expect(created.request.method).toBe('POST');
+    expect(created.request.body).toEqual(input);
+    created.flush({ id: 'employee-1' });
+    api.setEmployeeStatus('employee-1', 'deactivate', 3).subscribe();
+    const statusRequest = http.expectOne('/api/v1/employees/employee-1/deactivate');
+    expect(statusRequest.request.method).toBe('POST');
+    expect(statusRequest.request.body).toEqual({ version: 3 });
+    statusRequest.flush({ id: 'employee-1', status: 'INACTIVE', version: 4 });
+  });
+
   it('does not accept tenant scope for tenant audit reads', () => {
     api.auditLogs({ tenantId: 'foreign-tenant', module: 'IDENTITY', page: 2 }, false).subscribe();
     const request = http.expectOne(value => value.url === '/api/v1/audit-logs');
@@ -49,5 +75,20 @@ describe('ApiService', () => {
     expect(request.request.params.has('tenantId')).toBeFalse();
     expect(request.request.params.get('result')).toBe('DENIED');
     request.flush({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 });
+  });
+
+  it('reads tenant subscription without a tenant ID supplied by the client', () => {
+    api.subscription().subscribe();
+    const request = http.expectOne('/api/v1/subscription');
+    expect(request.request.method).toBe('GET');
+    request.flush({ tenantId: 'tenant', planCode: 'BASE', modules: [], capabilities: [], usage: {} });
+  });
+
+  it('sends platform limit changes to the selected tenant', () => {
+    api.updateActiveUserLimit('tenant-1', 'FINITE', 3, null).subscribe();
+    const request = http.expectOne('/api/platform/v1/tenants/tenant-1/subscription/limits/ACTIVE_USERS');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ mode: 'FINITE', value: 3, expiresAt: null });
+    request.flush({ tenantId: 'tenant-1', planCode: 'BASE', modules: [], capabilities: [], usage: {} });
   });
 });

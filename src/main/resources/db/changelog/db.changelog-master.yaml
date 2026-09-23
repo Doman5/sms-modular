@@ -5,3 +5,7 @@ databaseChangeLog:
       file: db/changelog/identity-access/db.changelog-identity-access.yaml
   - include:
       file: db/changelog/audit/db.changelog-audit.yaml
+  - include:
+      file: db/changelog/entitlements/db.changelog-entitlements.yaml
+  - include:
+      file: db/changelog/employee/db.changelog-employee.yaml

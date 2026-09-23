@@ -28,6 +28,7 @@ import com.domanski.smsmodular.identity.entity.AccountStatus;
 import com.domanski.smsmodular.identity.entity.UserAccount;
 import com.domanski.smsmodular.identity.repository.UserAccountRepository;
 import com.domanski.smsmodular.tenancy.service.TenantService;
+import com.domanski.smsmodular.usage.service.UsageService;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +41,7 @@ public class UserService {
 	private final PasswordEncoder passwords;
 	private final Clock clock;
 	private final AuditService audit;
+	private final UsageService usage;
 
 	@Transactional(readOnly = true)
 	public PageResponse<UserResponse> list(UUID tenantId, Pageable pageable) {
@@ -66,6 +68,7 @@ public class UserService {
 		if (users.findByNormalizedEmail(email).isPresent()) {
 			throw new ApiException(HttpStatus.CONFLICT, "EMAIL_CONFLICT", "Email is already in use");
 		}
+		usage.requireAdditionalActiveUser(tenantId, activeCount(tenantId));
 		String temporaryPassword = policy.temporaryPassword();
 		UserAccount user = new UserAccount(UUID.randomUUID(), tenantId, request.roleId(), email,
 				name, passwords.encode(temporaryPassword), clock.instant());
@@ -104,6 +107,7 @@ public class UserService {
 		UserAccount user = require(tenantId, id);
 		String previous = user.getStatus().name();
 		if (!previous.equals(status.name())) {
+			if (status == AccountStatus.ACTIVE) usage.requireAdditionalActiveUser(tenantId, activeCount(tenantId));
 			user.setStatus(status);
 			roles.ensureAdminRemains(tenantId, user.getRoleId(), roles.permissions(tenantId, user.getRoleId()), user);
 			user.setSessionVersion(user.getSessionVersion() + 1);
@@ -136,5 +140,10 @@ public class UserService {
 	public UserAccount require(UUID tenantId, UUID id) {
 		return users.findByTenantIdAndId(tenantId, id)
 				.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User was not found"));
+	}
+
+	@Transactional(readOnly = true)
+	public long activeCount(UUID tenantId) {
+		return users.countByTenantIdAndStatus(tenantId, AccountStatus.ACTIVE);
 	}
 }

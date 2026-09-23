@@ -4,8 +4,9 @@
 
 SMS Modular jest modularnym monolitem SaaS dla wielu tenantów. Jedna firma jest
 jednym tenantem. Produkt ma obowiązkowy pakiet bazowy i opcjonalne dodatki.
-Foundation, Tenancy, Identity & Access oraz Audit są zaimplementowane. Dokumenty i
-inwentarz SMS2 opisują cel oraz kolejność dalszego wdrażania.
+Foundation, Tenancy, Identity & Access, Audit, Entitlements oraz pierwszy zakres
+Usage są zaimplementowane. Dokumenty i inwentarz SMS2 opisują cel oraz kolejność
+dalszego wdrażania.
 
 ## Źródła prawdy
 
