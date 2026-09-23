@@ -104,6 +104,11 @@ zapis obejmuje tylko jednoznaczny czas pracy i ogólną nieobecność; pozostał
 wiadomości wymagają weryfikacji. Integracja domyślnie jest wyłączona. Szczegóły
 wdrożenia i retencji są w [opisie modułu](docs/implementation/base/sms-inbound.md).
 
+W Railway `sms-modular-backend` używa istniejącej usługi Postgres w osobnym
+schemacie `sms_modular`. Własne tabele historii Liquibase zapobiegają kolizji
+z bazą pozostałych aplikacji w projekcie. Frontend i backend są osobnymi
+usługami podłączonymi do `Doman5/sms-modular` na gałęzi `main`.
+
 ## Architektura i kolejność prac
 
 [Plan implementacji](docs/implementation/README.md) opisuje etapy od Foundation

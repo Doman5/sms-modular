@@ -1,4 +1,10 @@
 databaseChangeLog:
+  - changeSet:
+      id: deployment-001-create-sms-modular-schema
+      author: sms-modular
+      changes:
+        - sql:
+            sql: CREATE SCHEMA IF NOT EXISTS sms_modular
   - include:
       file: db/changelog/tenancy/db.changelog-tenancy.yaml
   - include:
